@@ -69,7 +69,9 @@ const massFormSchema = z.object({
 
 import { useSearchParams } from "next/navigation"
 
-export default function TransactionPage() {
+import { Suspense } from "react"
+
+function TransactionContent() {
     const [isLoading, setIsLoading] = useState(false)
     const [students, setStudents] = useState<{ id: string; name: string }[]>([])
     const [categories, setCategories] = useState<any[]>([])
@@ -511,5 +513,13 @@ export default function TransactionPage() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+export default function TransactionPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
+            <TransactionContent />
+        </Suspense>
     )
 }
