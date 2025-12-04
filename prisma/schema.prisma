@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      String // ADMIN, KOMITE, SANTRI
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  transactionsCreated Transaction[] @relation("CreatedBy")
+  studentTransactions Transaction[] @relation("StudentTransaction")
+  teacherTransactions Transaction[] @relation("TeacherTransaction")
+
+  // New Fields for Santri/Guru
+  parentName String? // Santri
+  subject    String? // Guru
+  isActive   Boolean @default(true)
+
+  halaqahId String?
+  halaqah   Halaqah? @relation(fields: [halaqahId], references: [id])
+
+  shiftId String?
+  shift   Shift?  @relation(fields: [shiftId], references: [id])
+
+  // SPP Installment Relations
+  sppInstallmentSettings     SppInstallmentSettings?
+  sppInstallmentPayments     SppInstallmentPayment[] @relation("StudentInstallmentPayments")
+  createdInstallmentPayments SppInstallmentPayment[] @relation("CreatedInstallmentPayments")
+
+  // Announcements
+  createdAnnouncements Announcement[] @relation("CreatedAnnouncements")
+}
+
+model Halaqah {
+  id    String @id @default(cuid())
+  name  String
+  users User[]
+}
+
+model Shift {
+  id    String @id @default(cuid())
+  name  String
+  users User[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String // SPP, KAS, TABUNGAN, PEMASUKAN_LAIN, PENGELUARAN_KOMITE, PENGELUARAN_ADMIN, PENARIKAN_TABUNGAN
+  amount      Float
+  date        DateTime @default(now())
+  description String?
+
+  // Handover Logic
+  isHandover     Boolean   @default(false)
+  handoverStatus String    @default("NONE") // NONE, PENDING, COMPLETED
+  handoverDate   DateTime?
+
+  // Relations
+  studentId String?
+  student   User?   @relation("StudentTransaction", fields: [studentId], references: [id])
+
+  teacherId String?
+  teacher   User?   @relation("TeacherTransaction", fields: [teacherId], references: [id])
+
+  creatorId String
+  creator   User   @relation("CreatedBy", fields: [creatorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TransactionCategory {
+  id           String   @id @default(cuid())
+  name         String   @unique // e.g., "Tabungan", "Uang Kas", "Donasi"
+  type         String // "INCOME" or "EXPENSE"
+  code         String   @unique // e.g., "TABUNGAN", "KAS" (used for code logic)
+  showToKomite Boolean  @default(true)
+  showToAdmin  Boolean  @default(true)
+  isSystem     Boolean  @default(false) // If true, cannot be deleted/renamed code
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SppInstallmentSettings {
+  id            String   @id @default(cuid())
+  studentId     String   @unique
+  student       User     @relation(fields: [studentId], references: [id])
+  defaultAmount Float // Default SPP amount per month
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SppInstallmentPayment {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     User     @relation("StudentInstallmentPayments", fields: [studentId], references: [id])
+  year        Int // Payment year
+  month       Int // Payment month (0-11)
+  amount      Float // Payment amount
+  date        DateTime @default(now())
+  description String?
+
+  createdById String
+  createdBy   User   @relation("CreatedInstallmentPayments", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId, year, month])
+}
+
+model Announcement {
+  id           String  @id @default(cuid())
+  title        String
+  content      String
+  showToKomite Boolean @default(false)
+  showToSantri Boolean @default(false)
+  isActive     Boolean @default(true)
+
+  createdById String
+  createdBy   User   @relation("CreatedAnnouncements", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
