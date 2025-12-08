@@ -1,8 +1,9 @@
 "use server"
 
-import { prisma } from "@/lib/prisma"
+import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { getStudentInstallmentData } from "./installment"
 
 export async function getSantriMonthlyPaymentStatus(year: number) {
     const session = await getServerSession(authOptions)
@@ -12,34 +13,32 @@ export async function getSantriMonthlyPaymentStatus(year: number) {
 
     const studentId = session.user.id
 
-    const student = await prisma.user.findUnique({
-        where: { id: studentId },
-        select: {
-            id: true,
-            name: true,
-            username: true,
-            halaqah: { select: { name: true } },
-            studentTransactions: {
-                where: {
-                    type: "KAS",
-                    date: {
-                        gte: new Date(`${year}-01-01`),
-                        lte: new Date(`${year}-12-31`)
-                    }
-                },
-                select: {
-                    date: true,
-                }
-            }
-        }
-    })
+    const { data: student } = await supabaseAdmin
+        .from('User')
+        .select(`
+            id,
+            name,
+            username,
+            halaqah:halaqahId (name)
+        `)
+        .eq('id', studentId)
+        .single()
 
     if (!student) throw new Error("Student not found")
 
+    // Get KAS transactions for the year
+    const { data: transactions } = await supabaseAdmin
+        .from('Transaction')
+        .select('date')
+        .eq('studentId', studentId)
+        .eq('type', 'KAS')
+        .gte('date', `${year}-01-01`)
+        .lte('date', `${year}-12-31`)
+
     const kasByMonth: Record<number, boolean> = {}
 
-    student.studentTransactions.forEach(transaction => {
-        const month = transaction.date.getMonth()
+    transactions?.forEach(transaction => {
+        const month = new Date(transaction.date).getMonth()
         kasByMonth[month] = true
     })
 
@@ -60,39 +59,26 @@ export async function getSantriTabunganData() {
 
     const studentId = session.user.id
 
-    const transactions = await prisma.transaction.findMany({
-        where: {
-            studentId: studentId,
-            OR: [
-                { type: "TABUNGAN" },
-                { type: "PENARIKAN_TABUNGAN" }
-            ]
-        },
-        orderBy: { date: "desc" },
-        select: {
-            id: true,
-            date: true,
-            type: true,
-            amount: true,
-            description: true,
-        }
-    })
+    const { data: transactions } = await supabaseAdmin
+        .from('Transaction')
+        .select('id, date, type, amount, description')
+        .eq('studentId', studentId)
+        .in('type', ['TABUNGAN', 'PENARIKAN_TABUNGAN'])
+        .order('date', { ascending: false })
 
     const tabunganIn = transactions
-        .filter(t => t.type === "TABUNGAN")
-        .reduce((sum, t) => sum + t.amount, 0)
+        ?.filter(t => t.type === "TABUNGAN")
+        .reduce((sum, t) => sum + t.amount, 0) || 0
     const tabunganOut = transactions
-        .filter(t => t.type === "PENARIKAN_TABUNGAN")
-        .reduce((sum, t) => sum + t.amount, 0)
+        ?.filter(t => t.type === "PENARIKAN_TABUNGAN")
+        .reduce((sum, t) => sum + t.amount, 0) || 0
     const saldoTabungan = tabunganIn - tabunganOut
 
     return {
         saldoTabungan,
-        transactions
+        transactions: transactions || []
     }
 }
-
-import { getStudentInstallmentData } from "./installment"
 
 export async function getSantriSppData(year: number) {
     const session = await getServerSession(authOptions)
@@ -114,29 +100,17 @@ export async function getSantriSppData(year: number) {
         }
 
         // If no installment settings, get regular SPP transactions
-        const student = await prisma.user.findUnique({
-            where: { id: studentId },
-            select: {
-                studentTransactions: {
-                    where: {
-                        type: "SPP",
-                        date: {
-                            gte: new Date(`${year}-01-01`),
-                            lte: new Date(`${year}-12-31`)
-                        }
-                    },
-                    select: {
-                        date: true,
-                    }
-                }
-            }
-        })
-
-        if (!student) return null
+        const { data: transactions } = await supabaseAdmin
+            .from('Transaction')
+            .select('date')
+            .eq('studentId', studentId)
+            .eq('type', 'SPP')
+            .gte('date', `${year}-01-01`)
+            .lte('date', `${year}-12-31`)
 
         const sppByMonth: Record<number, boolean> = {}
-        student.studentTransactions.forEach(transaction => {
-            const month = transaction.date.getMonth()
+        transactions?.forEach(transaction => {
+            const month = new Date(transaction.date).getMonth()
             sppByMonth[month] = true
         })
 

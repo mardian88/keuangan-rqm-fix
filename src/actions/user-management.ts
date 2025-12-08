@@ -1,6 +1,6 @@
 "use server"
 
-import { prisma } from "@/lib/prisma"
+import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { hash } from "bcryptjs"
@@ -12,22 +12,29 @@ export async function getUsersByRole(role: "SANTRI" | "GURU") {
         throw new Error("Unauthorized")
     }
 
-    return await prisma.user.findMany({
-        where: { role },
-        orderBy: { name: "asc" },
-        select: {
-            id: true,
-            name: true,
-            username: true,
-            role: true,
-            parentName: true,
-            subject: true,
-            isActive: true,
-            halaqah: { select: { id: true, name: true } },
-            shift: { select: { id: true, name: true } },
-            createdAt: true,
-        }
-    })
+    const { data, error } = await supabaseAdmin
+        .from('User')
+        .select(`
+            id,
+            name,
+            username,
+            role,
+            parentName,
+            subject,
+            isActive,
+            halaqah:halaqahId (id, name),
+            shift:shiftId (id, name),
+            createdAt
+        `)
+        .eq('role', role)
+        .order('name', { ascending: true })
+
+    if (error) {
+        console.error('Error fetching users by role:', error)
+        throw new Error('Failed to fetch users')
+    }
+
+    return data
 }
 
 export async function createSantriOrGuru(data: {
@@ -50,8 +57,9 @@ export async function createSantriOrGuru(data: {
     const hashedPassword = await hash(password, 10)
 
     try {
-        await prisma.user.create({
-            data: {
+        const { error } = await supabaseAdmin
+            .from('User')
+            .insert({
                 name: data.name,
                 username: data.username,
                 password: hashedPassword,
@@ -61,8 +69,29 @@ export async function createSantriOrGuru(data: {
                 halaqahId: data.halaqahId,
                 shiftId: data.shiftId,
                 isActive: data.isActive ?? true,
-            },
-        })
+            })
+
+        if (error) {
+            console.error("Error creating user:", error)
+            console.error('Error details:', JSON.stringify(error, null, 2))
+            console.error('Attempted to insert:', {
+                username: data.username,
+                role: data.role,
+                halaqahId: data.halaqahId,
+                shiftId: data.shiftId
+            })
+
+            // Check for specific error types
+            if (error.code === '23505') {
+                // Unique constraint violation
+                return { success: false, error: `Username/NIS/NIP "${data.username}" sudah digunakan` }
+            } else if (error.message?.includes('null value')) {
+                return { success: false, error: `Error: ${error.message}` }
+            } else {
+                return { success: false, error: `Gagal membuat user: ${error.message || 'Unknown error'}` }
+            }
+        }
+
         revalidatePath(`/admin/${data.role.toLowerCase()}`)
         return { success: true }
     } catch (error) {
@@ -94,8 +123,9 @@ export async function createBulkUsers(users: Array<{
             const password = user.password || user.username
             const hashedPassword = await hash(password, 10)
 
-            await prisma.user.create({
-                data: {
+            const { error } = await supabaseAdmin
+                .from('User')
+                .insert({
                     name: user.name,
                     username: user.username,
                     password: hashedPassword,
@@ -105,8 +135,12 @@ export async function createBulkUsers(users: Array<{
                     halaqahId: user.halaqahId,
                     shiftId: user.shiftId,
                     isActive: user.isActive ?? true,
-                },
-            })
+                })
+
+            if (error) {
+                throw new Error(error.message)
+            }
+
             results.success++
         } catch (error: any) {
             results.failed++
@@ -125,9 +159,16 @@ export async function deleteUserById(userId: string, role: string) {
         throw new Error("Unauthorized")
     }
 
-    await prisma.user.delete({
-        where: { id: userId },
-    })
+    const { error } = await supabaseAdmin
+        .from('User')
+        .delete()
+        .eq('id', userId)
+
+    if (error) {
+        console.error('Error deleting user:', error)
+        throw new Error('Failed to delete user')
+    }
+
     revalidatePath(`/admin/${role.toLowerCase()}`)
 }
 
@@ -137,10 +178,16 @@ export async function toggleUserActive(userId: string, isActive: boolean) {
         throw new Error("Unauthorized")
     }
 
-    await prisma.user.update({
-        where: { id: userId },
-        data: { isActive },
-    })
+    const { error } = await supabaseAdmin
+        .from('User')
+        .update({ isActive })
+        .eq('id', userId)
+
+    if (error) {
+        console.error('Error toggling user active:', error)
+        throw new Error('Failed to update user status')
+    }
+
     revalidatePath(`/admin/santri`)
     revalidatePath(`/admin/guru`)
 }
@@ -159,17 +206,23 @@ export async function updateSantriOrGuru(userId: string, data: {
     }
 
     try {
-        await prisma.user.update({
-            where: { id: userId },
-            data: {
+        const { error } = await supabaseAdmin
+            .from('User')
+            .update({
                 name: data.name,
                 username: data.username,
                 parentName: data.parentName,
                 subject: data.subject,
                 halaqahId: data.halaqahId || null,
                 shiftId: data.shiftId || null,
-            },
-        })
+            })
+            .eq('id', userId)
+
+        if (error) {
+            console.error("Error updating user:", error)
+            return { success: false, error: "Username/NIS/NIP already exists" }
+        }
+
         revalidatePath(`/admin/santri`)
         revalidatePath(`/admin/guru`)
         return { success: true }

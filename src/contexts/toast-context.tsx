@@ -6,14 +6,15 @@ type ToastType = 'success' | 'error' | 'warning' | 'info'
 
 interface Toast {
     id: string
-    message: string
+    title: string
+    description?: string
     type: ToastType
     duration: number
 }
 
 interface ToastContextType {
     toasts: Toast[]
-    showToast: (message: string, type?: ToastType, duration?: number) => void
+    showToast: (title: string, type?: ToastType, description?: string, duration?: number) => void
     removeToast: (id: string) => void
 }
 
@@ -22,9 +23,9 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
 export function ToastProvider({ children }: { children: React.ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([])
 
-    const showToast = useCallback((message: string, type: ToastType = 'info', duration: number = 3000) => {
+    const showToast = useCallback((title: string, type: ToastType = 'info', description?: string, duration: number = 3000) => {
         const id = Math.random().toString(36).substring(7)
-        const newToast: Toast = { id, message, type, duration }
+        const newToast: Toast = { id, title, description, type, duration }
 
         setToasts(prev => [...prev, newToast])
 

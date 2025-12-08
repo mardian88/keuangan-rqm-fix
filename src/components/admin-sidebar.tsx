@@ -16,9 +16,14 @@ import {
     BarChart3,
     CreditCard,
     Megaphone,
-    X
+    FileText,
+    X,
+    Database,
+    ChevronDown,
+    ChevronRight
 } from "lucide-react"
 import { signOut } from "next-auth/react"
+import { useState } from "react"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
     onClose?: () => void
@@ -26,6 +31,9 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function AdminSidebar({ className, onClose }: SidebarProps) {
     const pathname = usePathname()
+    const [isDataMenuOpen, setIsDataMenuOpen] = useState(
+        pathname.includes("/admin/santri") || pathname.includes("/admin/guru")
+    )
 
     const routes = [
         {
@@ -47,10 +55,22 @@ export function AdminSidebar({ className, onClose }: SidebarProps) {
             active: pathname === "/admin/expenditure",
         },
         {
+            href: "/admin/cicilan",
+            label: "Cicilan",
+            icon: CreditCard,
+            active: pathname === "/admin/cicilan",
+        },
+        {
             href: "/admin/handover",
             label: "Serah Terima",
             icon: HandCoins,
             active: pathname === "/admin/handover",
+        },
+        {
+            href: "/admin/laporan-transaksi",
+            label: "Laporan Transaksi",
+            icon: FileText,
+            active: pathname === "/admin/laporan-transaksi",
         },
         {
             href: "/admin/monitoring",
@@ -58,12 +78,9 @@ export function AdminSidebar({ className, onClose }: SidebarProps) {
             icon: BarChart3,
             active: pathname === "/admin/monitoring",
         },
-        {
-            href: "/admin/cicilan",
-            label: "Cicilan SPP",
-            icon: CreditCard,
-            active: pathname === "/admin/cicilan",
-        },
+    ]
+
+    const dataSubRoutes = [
         {
             href: "/admin/santri",
             label: "Data Santri",
@@ -76,6 +93,9 @@ export function AdminSidebar({ className, onClose }: SidebarProps) {
             icon: Users,
             active: pathname === "/admin/guru",
         },
+    ]
+
+    const bottomRoutes = [
         {
             href: "/admin/announcements",
             label: "Pengumuman",
@@ -108,7 +128,67 @@ export function AdminSidebar({ className, onClose }: SidebarProps) {
                         Admin RQM
                     </h2>
                     <div className="space-y-1">
+                        {/* Main Routes */}
                         {routes.map((route) => (
+                            <Button
+                                key={route.href}
+                                variant={route.active ? "default" : "ghost"}
+                                className={cn(
+                                    "w-full justify-start",
+                                    route.active && "bg-green-600 hover:bg-green-700 text-white"
+                                )}
+                                asChild
+                                onClick={onClose}
+                            >
+                                <Link href={route.href}>
+                                    <route.icon className="mr-2 h-4 w-4" />
+                                    {route.label}
+                                </Link>
+                            </Button>
+                        ))}
+
+                        {/* Data Parent Menu */}
+                        <div>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={() => setIsDataMenuOpen(!isDataMenuOpen)}
+                            >
+                                <Database className="mr-2 h-4 w-4" />
+                                Data
+                                {isDataMenuOpen ? (
+                                    <ChevronDown className="ml-auto h-4 w-4" />
+                                ) : (
+                                    <ChevronRight className="ml-auto h-4 w-4" />
+                                )}
+                            </Button>
+
+                            {/* Data Sub-menu */}
+                            {isDataMenuOpen && (
+                                <div className="ml-4 mt-1 space-y-1">
+                                    {dataSubRoutes.map((route) => (
+                                        <Button
+                                            key={route.href}
+                                            variant={route.active ? "default" : "ghost"}
+                                            className={cn(
+                                                "w-full justify-start",
+                                                route.active && "bg-green-600 hover:bg-green-700 text-white"
+                                            )}
+                                            asChild
+                                            onClick={onClose}
+                                        >
+                                            <Link href={route.href}>
+                                                <route.icon className="mr-2 h-4 w-4" />
+                                                {route.label}
+                                            </Link>
+                                        </Button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Bottom Routes */}
+                        {bottomRoutes.map((route) => (
                             <Button
                                 key={route.href}
                                 variant={route.active ? "default" : "ghost"}

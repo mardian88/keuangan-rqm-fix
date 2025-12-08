@@ -55,6 +55,7 @@ export default function AnnouncementsPage() {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null)
+    const [hasShownError, setHasShownError] = useState(false)
     const { showToast } = useToast()
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -74,11 +75,17 @@ export default function AnnouncementsPage() {
 
     async function loadAnnouncements() {
         try {
+            setIsLoading(true)
             const data = await getAnnouncements()
             setAnnouncements(data)
+            setHasShownError(false) // Reset error flag on successful load
         } catch (error) {
             console.error(error)
-            showToast("Gagal memuat pengumuman", "error")
+            // Only show toast if we haven't shown an error yet
+            if (!hasShownError) {
+                showToast("Gagal memuat pengumuman", "error")
+                setHasShownError(true)
+            }
         } finally {
             setIsLoading(false)
         }

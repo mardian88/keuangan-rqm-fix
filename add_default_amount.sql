@@ -1,0 +1,1 @@
+ALTER TABLE "TransactionCategory" ADD COLUMN "defaultAmount" DOUBLE PRECISION DEFAULT 0;

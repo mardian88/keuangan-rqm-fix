@@ -45,7 +45,7 @@ export default function AdminLayout({
             )}
 
             {/* Main Content */}
-            <div className="flex-1 p-4 md:p-8 bg-white">
+            <div className="flex-1 p-4 md:p-8 bg-white pb-20 md:pb-8">
                 {children}
             </div>
         </div>

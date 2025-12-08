@@ -18,7 +18,7 @@ export default function KomiteLayout({
                 <KomiteSidebar className="min-h-0 h-full border-none" />
             </MobileNav>
 
-            <div className="flex-1 p-4 md:p-8 bg-white overflow-x-hidden">
+            <div className="flex-1 p-4 md:p-8 bg-white overflow-x-hidden pb-20 md:pb-8">
                 {children}
             </div>
         </div>

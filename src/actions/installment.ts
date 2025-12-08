@@ -1,6 +1,6 @@
 "use server"
 
-import { prisma } from "@/lib/prisma"
+import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
@@ -11,27 +11,54 @@ export async function enableInstallmentForStudent(studentId: string, defaultAmou
     }
 
     // Check if student exists and is a SANTRI
-    const student = await prisma.user.findUnique({
-        where: { id: studentId, role: "SANTRI" }
-    })
+    const { data: student } = await supabaseAdmin
+        .from('User')
+        .select('id')
+        .eq('id', studentId)
+        .eq('role', 'SANTRI')
+        .single()
 
     if (!student) {
         throw new Error("Student not found")
     }
 
-    // Create or update installment settings
-    const settings = await prisma.sppInstallmentSettings.upsert({
-        where: { studentId },
-        create: {
-            studentId,
-            defaultAmount,
-            isActive: true
-        },
-        update: {
-            defaultAmount,
-            isActive: true
-        }
-    })
+    // Check if settings exist
+    const { data: existing } = await supabaseAdmin
+        .from('SppInstallmentSettings')
+        .select('*')
+        .eq('studentId', studentId)
+        .single()
+
+    let settings
+    if (existing) {
+        // Update
+        const { data, error } = await supabaseAdmin
+            .from('SppInstallmentSettings')
+            .update({
+                defaultAmount,
+                isActive: true
+            })
+            .eq('studentId', studentId)
+            .select()
+            .single()
+
+        if (error) throw new Error(error.message)
+        settings = data
+    } else {
+        // Create
+        const { data, error } = await supabaseAdmin
+            .from('SppInstallmentSettings')
+            .insert({
+                studentId,
+                defaultAmount,
+                isActive: true
+            })
+            .select()
+            .single()
+
+        if (error) throw new Error(error.message)
+        settings = data
+    }
 
     return settings
 }
@@ -42,12 +69,49 @@ export async function disableInstallmentForStudent(studentId: string) {
         throw new Error("Unauthorized")
     }
 
-    const settings = await prisma.sppInstallmentSettings.update({
-        where: { studentId },
-        data: { isActive: false }
-    })
+    // Get current month and year
+    const now = new Date()
+    const currentMonth = now.getMonth() // 0-11
+    const currentYear = now.getFullYear()
 
-    return settings
+    // Get installment settings
+    const { data: settings } = await supabaseAdmin
+        .from('SppInstallmentSettings')
+        .select('*')
+        .eq('studentId', studentId)
+        .eq('isActive', true)
+        .single()
+
+    if (!settings) {
+        throw new Error("Installment settings not found or already inactive")
+    }
+
+    // Get payments for current month
+    const { data: payments } = await supabaseAdmin
+        .from('SppInstallmentPayment')
+        .select('amount')
+        .eq('studentId', studentId)
+        .eq('year', currentYear)
+        .eq('month', currentMonth)
+
+    const totalPaid = payments?.reduce((sum, p) => sum + p.amount, 0) || 0
+    const remaining = settings.defaultAmount - totalPaid
+
+    // Validate: current month must be fully paid
+    if (remaining > 0) {
+        throw new Error(`Tidak dapat menonaktifkan cicilan. Bulan berjalan masih memiliki sisa pembayaran sebesar Rp ${remaining.toLocaleString('id-ID')}. Harap lunasi terlebih dahulu.`)
+    }
+
+    // Deactivate installment
+    const { data, error } = await supabaseAdmin
+        .from('SppInstallmentSettings')
+        .update({ isActive: false })
+        .eq('studentId', studentId)
+        .select()
+        .single()
+
+    if (error) throw new Error(error.message)
+    return data
 }
 
 export async function updateDefaultSppAmount(studentId: string, amount: number) {
@@ -56,12 +120,15 @@ export async function updateDefaultSppAmount(studentId: string, amount: number) 
         throw new Error("Unauthorized")
     }
 
-    const settings = await prisma.sppInstallmentSettings.update({
-        where: { studentId },
-        data: { defaultAmount: amount }
-    })
+    const { data, error } = await supabaseAdmin
+        .from('SppInstallmentSettings')
+        .update({ defaultAmount: amount })
+        .eq('studentId', studentId)
+        .select()
+        .single()
 
-    return settings
+    if (error) throw new Error(error.message)
+    return data
 }
 
 export async function recordInstallmentPayment(
@@ -77,26 +144,32 @@ export async function recordInstallmentPayment(
     }
 
     // Verify student has installment enabled
-    const settings = await prisma.sppInstallmentSettings.findUnique({
-        where: { studentId, isActive: true }
-    })
+    const { data: settings } = await supabaseAdmin
+        .from('SppInstallmentSettings')
+        .select('*')
+        .eq('studentId', studentId)
+        .eq('isActive', true)
+        .single()
 
     if (!settings) {
         throw new Error("Installment not enabled for this student")
     }
 
-    const payment = await prisma.sppInstallmentPayment.create({
-        data: {
+    const { data, error } = await supabaseAdmin
+        .from('SppInstallmentPayment')
+        .insert({
             studentId,
             year,
             month,
             amount,
             description,
             createdById: session.user.id
-        }
-    })
+        })
+        .select()
+        .single()
 
-    return payment
+    if (error) throw new Error(error.message)
+    return data
 }
 
 export async function getStudentInstallmentData(studentId: string, year: number) {
@@ -106,36 +179,34 @@ export async function getStudentInstallmentData(studentId: string, year: number)
     }
 
     // Get settings
-    const settings = await prisma.sppInstallmentSettings.findUnique({
-        where: { studentId, isActive: true }
-    })
+    const { data: settings } = await supabaseAdmin
+        .from('SppInstallmentSettings')
+        .select('*')
+        .eq('studentId', studentId)
+        .eq('isActive', true)
+        .single()
 
     if (!settings) {
         return null
     }
 
     // Get all payments for the year
-    const payments = await prisma.sppInstallmentPayment.findMany({
-        where: {
-            studentId,
-            year
-        },
-        orderBy: [
-            { month: 'asc' },
-            { createdAt: 'asc' }
-        ],
-        include: {
-            createdBy: {
-                select: {
-                    name: true
-                }
-            }
-        }
-    })
+    const { data: payments } = await supabaseAdmin
+        .from('SppInstallmentPayment')
+        .select(`
+            *,
+            createdBy:createdById (
+                name
+            )
+        `)
+        .eq('studentId', studentId)
+        .eq('year', year)
+        .order('month', { ascending: true })
+        .order('createdAt', { ascending: true })
 
     // Calculate monthly totals
     const monthlyData = Array.from({ length: 12 }, (_, month) => {
-        const monthPayments = payments.filter(p => p.month === month)
+        const monthPayments = payments?.filter(p => p.month === month) || []
         const totalPaid = monthPayments.reduce((sum, p) => sum + p.amount, 0)
         const remaining = settings.defaultAmount - totalPaid
         const status = (remaining <= 0 ? 'paid' : totalPaid > 0 ? 'partial' : 'unpaid') as 'paid' | 'partial' | 'unpaid'
@@ -153,7 +224,7 @@ export async function getStudentInstallmentData(studentId: string, year: number)
     return {
         settings,
         monthlyData,
-        allPayments: payments
+        allPayments: payments || []
     }
 }
 
@@ -163,33 +234,25 @@ export async function getInstallmentEnabledStudents() {
         throw new Error("Unauthorized")
     }
 
-    const students = await prisma.user.findMany({
-        where: {
-            role: "SANTRI",
-            isActive: true,
-            sppInstallmentSettings: {
-                isActive: true
-            }
-        },
-        select: {
-            id: true,
-            name: true,
-            username: true,
-            halaqah: {
-                select: {
-                    name: true
-                }
-            },
-            sppInstallmentSettings: {
-                select: {
-                    defaultAmount: true
-                }
-            }
-        },
-        orderBy: { name: 'asc' }
-    })
+    const { data: students } = await supabaseAdmin
+        .from('User')
+        .select(`
+            id,
+            name,
+            username,
+            halaqah:halaqahId (
+                name
+            ),
+            sppInstallmentSettings:SppInstallmentSettings!inner (
+                defaultAmount
+            )
+        `)
+        .eq('role', 'SANTRI')
+        .eq('isActive', true)
+        .eq('sppInstallmentSettings.isActive', true)
+        .order('name', { ascending: true })
 
-    return students
+    return students || []
 }
 
 export async function getAllStudentsForInstallment() {
@@ -198,32 +261,26 @@ export async function getAllStudentsForInstallment() {
         throw new Error("Unauthorized")
     }
 
-    const students = await prisma.user.findMany({
-        where: {
-            role: "SANTRI",
-            isActive: true
-        },
-        select: {
-            id: true,
-            name: true,
-            username: true,
-            halaqah: {
-                select: {
-                    name: true
-                }
-            },
-            sppInstallmentSettings: {
-                select: {
-                    id: true,
-                    defaultAmount: true,
-                    isActive: true
-                }
-            }
-        },
-        orderBy: { name: 'asc' }
-    })
+    const { data: students } = await supabaseAdmin
+        .from('User')
+        .select(`
+            id,
+            name,
+            username,
+            halaqah:halaqahId (
+                name
+            ),
+            sppInstallmentSettings:SppInstallmentSettings (
+                id,
+                defaultAmount,
+                isActive
+            )
+        `)
+        .eq('role', 'SANTRI')
+        .eq('isActive', true)
+        .order('name', { ascending: true })
 
-    return students
+    return students || []
 }
 
 export async function deleteInstallmentPayment(paymentId: string) {
@@ -232,9 +289,13 @@ export async function deleteInstallmentPayment(paymentId: string) {
         throw new Error("Unauthorized")
     }
 
-    const payment = await prisma.sppInstallmentPayment.delete({
-        where: { id: paymentId }
-    })
+    const { data, error } = await supabaseAdmin
+        .from('SppInstallmentPayment')
+        .delete()
+        .eq('id', paymentId)
+        .select()
+        .single()
 
-    return payment
+    if (error) throw new Error(error.message)
+    return data
 }

@@ -40,6 +40,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Users, Check, ChevronsUpDown } from "lucide-react"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 
+const targetTypes = ["TABUNGAN", "KAS", "UANG_KAS", "KAS_MASUK", "PENARIKAN_TABUNGAN"]
+
 const formSchema = z.object({
     type: z.string().min(1, "Tipe transaksi harus dipilih"),
     amount: z.coerce.number().min(1, "Jumlah harus lebih dari 0"),
@@ -47,7 +49,7 @@ const formSchema = z.object({
     date: z.date(),
     studentId: z.string().optional(),
 }).refine((data) => {
-    if (["KAS", "TABUNGAN"].includes(data.type)) {
+    if (targetTypes.includes(data.type)) {
         return !!data.studentId
     }
     // For other types, description must be at least 15 chars
@@ -59,7 +61,7 @@ const formSchema = z.object({
     message: "Keterangan minimal 15 karakter untuk jenis transaksi ini",
     path: ["description"],
 }).refine((data) => {
-    if (["KAS", "TABUNGAN"].includes(data.type)) {
+    if (targetTypes.includes(data.type)) {
         return !!data.studentId
     }
     return true
@@ -125,9 +127,28 @@ export default function KomiteTransactionPage() {
 
     const type = form.watch("type")
     // Show student select for specific system categories that require it
-    const showStudentSelect = ["TABUNGAN", "KAS"].includes(type)
+    const showStudentSelect = targetTypes.includes(type)
+
+    // Clear studentId if type changes to something that doesn't require it? 
+    // Maybe better not to force clear to avoid UX annoyance, but validation handles it.
+
+    const selectedCategory = categories.find(c => c.code === type)
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
+        // Client-side validation for "Lainnya"
+        if (selectedCategory && (
+            selectedCategory.name.toLowerCase().includes("lainnya") ||
+            selectedCategory.name.toLowerCase().includes("other")
+        )) {
+            if (!values.description || values.description.length < 20) {
+                form.setError("description", {
+                    type: "manual",
+                    message: "Untuk kategori ini, keterangan wajib minimal 20 karakter."
+                })
+                return
+            }
+        }
+
         setIsLoading(true)
         try {
             await createTransaction(values)
@@ -136,11 +157,12 @@ export default function KomiteTransactionPage() {
                 date: new Date(),
                 description: "",
                 type: values.type,
+                studentId: undefined, // Fixed: don't pass studentId if not needed, or let form check it
             })
             showToast("Transaksi berhasil disimpan", "success")
-        } catch (error) {
+        } catch (error: any) {
             console.error(error)
-            showToast("Gagal menyimpan transaksi", "error")
+            showToast(error.message || "Gagal menyimpan transaksi", "error")
         } finally {
             setIsLoading(false)
         }
@@ -215,7 +237,7 @@ export default function KomiteTransactionPage() {
                                                 </FormControl>
                                                 <SelectContent>
                                                     {categories
-                                                        .filter(cat => ["TABUNGAN", "KAS"].includes(cat.code)) // Filter only Tabungan/Kas for mass input
+                                                        .filter(cat => targetTypes.includes(cat.code)) // Filter only Tabungan/Kas/etc for mass input
                                                         .map((cat) => (
                                                             <SelectItem key={cat.id} value={cat.code}>
                                                                 {cat.name}
@@ -263,7 +285,7 @@ export default function KomiteTransactionPage() {
                                                             )}
                                                         >
                                                             {field.value ? (
-                                                                format(field.value, "PPP")
+                                                                format(field.value, "d MMMM yyyy", { locale: id })
                                                             ) : (
                                                                 <span>Pick a date</span>
                                                             )}
@@ -280,6 +302,7 @@ export default function KomiteTransactionPage() {
                                                             date > new Date() || date < new Date("1900-01-01")
                                                         }
                                                         initialFocus
+                                                        locale={id}
                                                     />
                                                 </PopoverContent>
                                             </Popover>

@@ -1,6 +1,6 @@
 "use server"
 
-import { prisma } from "@/lib/prisma"
+import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { hash } from "bcryptjs"
@@ -17,16 +17,18 @@ export async function getUsers() {
         throw new Error("Unauthorized - Please logout and login again to refresh your session")
     }
 
-    return await prisma.user.findMany({
-        orderBy: { createdAt: "desc" },
-        select: {
-            id: true,
-            name: true,
-            username: true,
-            role: true,
-            createdAt: true,
-        }
-    })
+    const { data, error } = await supabaseAdmin
+        .from('User')
+        .select('id, name, username, role, createdAt')
+        .order('createdAt', { ascending: false })
+
+    if (error) {
+        console.error('Error fetching users:', error)
+        console.error('Error details:', JSON.stringify(error, null, 2))
+        throw new Error('Failed to fetch users')
+    }
+
+    return data || []
 }
 
 export async function createUser(data: {
@@ -43,14 +45,20 @@ export async function createUser(data: {
     const hashedPassword = await hash(data.password, 10)
 
     try {
-        await prisma.user.create({
-            data: {
+        const { error } = await supabaseAdmin
+            .from('User')
+            .insert({
                 name: data.name,
                 username: data.username,
                 password: hashedPassword,
                 role: data.role,
-            },
-        })
+            })
+
+        if (error) {
+            console.error("Error creating user:", error)
+            return { success: false, error: "Username already exists or other error" }
+        }
+
         revalidatePath("/admin/settings")
         return { success: true }
     } catch (error) {
@@ -69,8 +77,15 @@ export async function deleteUser(userId: string) {
         throw new Error("Cannot delete yourself")
     }
 
-    await prisma.user.delete({
-        where: { id: userId },
-    })
+    const { error } = await supabaseAdmin
+        .from('User')
+        .delete()
+        .eq('id', userId)
+
+    if (error) {
+        console.error('Error deleting user:', error)
+        throw new Error('Failed to delete user')
+    }
+
     revalidatePath("/admin/settings")
 }

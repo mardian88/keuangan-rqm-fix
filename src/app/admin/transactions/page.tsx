@@ -37,7 +37,7 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { createTransaction } from "@/actions/transaction"
 import { createMassTransaction } from "@/actions/mass-transaction"
-import { getStudents } from "@/actions/user"
+import { getStudentsWithInstallmentStatus } from "@/actions/user"
 import { getTransactionCategories } from "@/actions/categories"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -67,20 +67,21 @@ const massFormSchema = z.object({
     date: z.date(),
 })
 
+import { useToast } from "@/contexts/toast-context"
 import { useSearchParams } from "next/navigation"
-
 import { Suspense } from "react"
 
 function TransactionContent() {
+    const { showToast } = useToast()
     const [isLoading, setIsLoading] = useState(false)
-    const [students, setStudents] = useState<{ id: string; name: string }[]>([])
+    const [students, setStudents] = useState<{ id: string; name: string; hasActiveInstallment: boolean }[]>([])
     const [categories, setCategories] = useState<any[]>([])
     const [openStudent, setOpenStudent] = useState(false)
     const [isMassInputOpen, setIsMassInputOpen] = useState(false)
     const searchParams = useSearchParams()
 
     useEffect(() => {
-        getStudents().then(setStudents)
+        getStudentsWithInstallmentStatus().then(setStudents)
         getTransactionCategories("ADMIN", "INCOME").then(setCategories)
 
         if (searchParams.get("open") === "mass") {
@@ -111,7 +112,43 @@ function TransactionContent() {
     })
 
     const type = form.watch("type")
-    const showStudentSelect = ["SPP", "TABUNGAN", "KAS"].includes(type)
+
+    // Check if category requires student (SPP, Tabungan, Kas - inclusive check)
+    const selectedCategory = categories.find(c => c.code === type)
+    const catName = selectedCategory?.name?.toLowerCase() || ""
+    const showStudentSelect = ["SPP", "TABUNGAN", "KAS", "UANG_KAS"].includes(type) ||
+        catName.includes("spp") ||
+        catName.includes("tabungan") ||
+        catName.includes("kas")
+
+    // Filter students based on transaction type
+    // For SPP: exclude students with active installments (they should use cicilan page)
+    const isSppTransaction = type === 'SPP' || catName.includes('spp')
+    const availableStudents = isSppTransaction
+        ? students.filter(s => !s.hasActiveInstallment)
+        : students
+
+    // Auto-fill and lock amount logic
+    useEffect(() => {
+        const selectedCat = categories.find(c => c.code === type)
+        if (selectedCat?.defaultAmount && selectedCat.defaultAmount > 0) {
+            form.setValue("amount", selectedCat.defaultAmount)
+        }
+    }, [type, categories, form])
+
+    const isAmountLocked = (selectedCategory?.defaultAmount || 0) > 0
+
+    // Mass Form Logic
+    const massType = massForm.watch("type")
+    useEffect(() => {
+        const selectedCat = categories.find(c => c.code === massType)
+        if (selectedCat?.defaultAmount && selectedCat.defaultAmount > 0) {
+            massForm.setValue("amount", selectedCat.defaultAmount)
+        }
+    }, [massType, categories, massForm])
+
+    const selectedMassCategory = categories.find(c => c.code === massType)
+    const isMassAmountLocked = (selectedMassCategory?.defaultAmount || 0) > 0
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsLoading(true)
@@ -123,10 +160,15 @@ function TransactionContent() {
                 description: "",
                 type: values.type,
             })
-            alert("Transaksi berhasil disimpan")
-        } catch (error) {
+            // Re-apply default amount if locked, because reset clears it
+            if (isAmountLocked) {
+                form.setValue("amount", selectedCategory.defaultAmount)
+            }
+            showToast("Transaksi berhasil disimpan", "success")
+        } catch (error: any) {
             console.error(error)
-            alert("Gagal menyimpan transaksi")
+            const message = error.message || "Gagal menyimpan transaksi"
+            showToast("Gagal menyimpan transaksi", "error", message)
         } finally {
             setIsLoading(false)
         }
@@ -143,11 +185,16 @@ function TransactionContent() {
                 type: values.type,
                 studentIds: [],
             })
+            // Re-apply default amount if locked
+            if (isMassAmountLocked) {
+                massForm.setValue("amount", selectedMassCategory.defaultAmount)
+            }
             setIsMassInputOpen(false)
-            alert("Transaksi masal berhasil disimpan")
-        } catch (error) {
+            showToast("Transaksi masal berhasil disimpan", "success")
+        } catch (error: any) {
             console.error(error)
-            alert("Gagal menyimpan transaksi masal")
+            const message = error.message || "Gagal menyimpan transaksi masal"
+            showToast("Gagal menyimpan transaksi", "error", message)
         } finally {
             setIsLoading(false)
         }
@@ -223,6 +270,7 @@ function TransactionContent() {
                                                     value={field.value}
                                                     onValueChange={field.onChange}
                                                     placeholder="Masukkan jumlah"
+                                                    disabled={isMassAmountLocked}
                                                 />
                                             </FormControl>
                                             <FormMessage />
@@ -368,6 +416,11 @@ function TransactionContent() {
                                     render={({ field }) => (
                                         <FormItem className="flex flex-col">
                                             <FormLabel>Nama Santri</FormLabel>
+                                            {isSppTransaction && students.some(s => s.hasActiveInstallment) && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Santri dengan cicilan aktif tidak ditampilkan. Gunakan halaman Cicilan untuk input pembayaran mereka.
+                                                </p>
+                                            )}
                                             <Popover open={openStudent} onOpenChange={setOpenStudent}>
                                                 <PopoverTrigger asChild>
                                                     <FormControl>
@@ -380,7 +433,7 @@ function TransactionContent() {
                                                             )}
                                                         >
                                                             {field.value
-                                                                ? students.find(
+                                                                ? availableStudents.find(
                                                                     (student) => student.id === field.value
                                                                 )?.name
                                                                 : "Pilih santri"}
@@ -394,7 +447,7 @@ function TransactionContent() {
                                                         <CommandList>
                                                             <CommandEmpty>Santri tidak ditemukan.</CommandEmpty>
                                                             <CommandGroup>
-                                                                {students.map((student) => (
+                                                                {availableStudents.map((student) => (
                                                                     <CommandItem
                                                                         value={student.name}
                                                                         key={student.id}
@@ -436,6 +489,7 @@ function TransactionContent() {
                                                 value={field.value}
                                                 onValueChange={field.onChange}
                                                 placeholder="Masukkan jumlah"
+                                                disabled={isAmountLocked}
                                             />
                                         </FormControl>
                                         <FormMessage />

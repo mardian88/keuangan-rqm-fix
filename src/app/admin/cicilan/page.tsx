@@ -32,6 +32,7 @@ import { Loader2, Plus, Settings, Trash2 } from "lucide-react"
 import {
     getAllStudentsForInstallment,
     enableInstallmentForStudent,
+    disableInstallmentForStudent,
     getStudentInstallmentData,
     recordInstallmentPayment,
     updateDefaultSppAmount,
@@ -49,12 +50,12 @@ type Student = {
     id: string
     name: string
     username: string
-    halaqah: { name: string } | null
+    halaqah: { name: string }[] | null
     sppInstallmentSettings: {
         id: string
         defaultAmount: number
         isActive: boolean
-    } | null
+    }[] | null
 }
 
 type MonthlyData = {
@@ -227,6 +228,21 @@ export default function CicilanPage() {
         }
     }
 
+    async function handleDisableInstallment() {
+        if (!confirm("Yakin ingin menonaktifkan cicilan untuk santri ini? Pastikan bulan berjalan sudah lunas.")) return
+
+        try {
+            await disableInstallmentForStudent(selectedStudent)
+            showToast("Fitur cicilan berhasil dinonaktifkan", "success")
+            await loadStudents()
+            await loadInstallmentData()
+        } catch (error: any) {
+            console.error(error)
+            const message = error.message || "Gagal menonaktifkan cicilan"
+            showToast("Gagal menonaktifkan cicilan", "error", message)
+        }
+    }
+
     const formatRupiah = (amount: number) => {
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',
@@ -236,7 +252,7 @@ export default function CicilanPage() {
     }
 
     const selectedStudentData = students.find(s => s.id === selectedStudent)
-    const hasInstallmentEnabled = selectedStudentData?.sppInstallmentSettings?.isActive
+    const hasInstallmentEnabled = selectedStudentData?.sppInstallmentSettings?.[0]?.isActive
 
     return (
         <div className="space-y-6">
@@ -262,7 +278,7 @@ export default function CicilanPage() {
                                     {students.map(student => (
                                         <SelectItem key={student.id} value={student.id}>
                                             {student.name} ({student.username})
-                                            {student.sppInstallmentSettings?.isActive && " ✓"}
+                                            {student.sppInstallmentSettings?.[0]?.isActive && " ✓"}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -276,13 +292,18 @@ export default function CicilanPage() {
                         )}
 
                         {selectedStudent && hasInstallmentEnabled && (
-                            <Button variant="outline" onClick={() => {
-                                setNewDefaultAmount(defaultAmount)
-                                setShowSettingsDialog(true)
-                            }}>
-                                <Settings className="h-4 w-4 mr-2" />
-                                Pengaturan
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => {
+                                    setNewDefaultAmount(defaultAmount)
+                                    setShowSettingsDialog(true)
+                                }}>
+                                    <Settings className="h-4 w-4 mr-2" />
+                                    Pengaturan
+                                </Button>
+                                <Button variant="destructive" onClick={handleDisableInstallment}>
+                                    Nonaktifkan Cicilan
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </CardContent>

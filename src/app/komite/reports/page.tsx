@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { Calendar as CalendarIcon, Download, Loader2, FileText } from "lucide-react"
+import { Calendar as CalendarIcon, Download, Loader2, FileText, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -25,12 +25,23 @@ import {
 import { getKomiteReports } from "@/actions/komite-reports"
 import * as XLSX from "xlsx"
 import { Badge } from "@/components/ui/badge"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
+const MONTHS = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+]
 
 export default function KomiteReportsPage() {
-    const [date, setDate] = useState<{ from: Date; to: Date } | undefined>({
-        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-        to: new Date(),
-    })
+    const now = new Date()
+    const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
+    const [selectedYear, setSelectedYear] = useState(now.getFullYear())
     const [isLoading, setIsLoading] = useState(false)
     const [data, setData] = useState<{
         pemasukanLain: any[]
@@ -44,22 +55,44 @@ export default function KomiteReportsPage() {
         tabunganSantri: []
     })
 
+    // Generate years array (current year ± 5 years)
+    const years = Array.from({ length: 11 }, (_, i) => now.getFullYear() - 5 + i)
+
     useEffect(() => {
-        if (date?.from && date?.to) {
-            loadData()
-        }
-    }, [date])
+        loadData()
+    }, [selectedMonth, selectedYear])
 
     async function loadData() {
-        if (!date?.from || !date?.to) return
         setIsLoading(true)
         try {
-            const result = await getKomiteReports(date.from, date.to)
+            // Calculate start and end of selected month
+            const startDate = new Date(selectedYear, selectedMonth, 1)
+            const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59)
+
+            const result = await getKomiteReports(startDate, endDate)
             setData(result)
         } catch (error) {
             console.error("Failed to load reports:", error)
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const handlePreviousMonth = () => {
+        if (selectedMonth === 0) {
+            setSelectedMonth(11)
+            setSelectedYear(selectedYear - 1)
+        } else {
+            setSelectedMonth(selectedMonth - 1)
+        }
+    }
+
+    const handleNextMonth = () => {
+        if (selectedMonth === 11) {
+            setSelectedMonth(0)
+            setSelectedYear(selectedYear + 1)
+        } else {
+            setSelectedMonth(selectedMonth + 1)
         }
     }
 
@@ -125,44 +158,56 @@ export default function KomiteReportsPage() {
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald-900">Laporan Keuangan</h1>
                     <p className="text-sm text-muted-foreground">Laporan transaksi komite, kas, dan tabungan santri</p>
                 </div>
-                <div className="flex gap-2">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                id="date"
-                                variant={"outline"}
-                                className={cn(
-                                    "w-[260px] justify-start text-left font-normal",
-                                    !date && "text-muted-foreground"
-                                )}
-                            >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date?.from ? (
-                                    date.to ? (
-                                        <>
-                                            {format(date.from, "dd MMM yyyy", { locale: id })} -{" "}
-                                            {format(date.to, "dd MMM yyyy", { locale: id })}
-                                        </>
-                                    ) : (
-                                        format(date.from, "dd MMM yyyy", { locale: id })
-                                    )
-                                ) : (
-                                    <span>Pilih rentang tanggal</span>
-                                )}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="end">
-                            <Calendar
-                                initialFocus
-                                mode="range"
-                                defaultMonth={date?.from}
-                                selected={date}
-                                onSelect={(range: any) => setDate(range)}
-                                numberOfMonths={2}
-                                locale={id}
-                            />
-                        </PopoverContent>
-                    </Popover>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handlePreviousMonth}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+
+                    <Select
+                        value={selectedMonth.toString()}
+                        onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                    >
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {MONTHS.map((month, idx) => (
+                                <SelectItem key={idx} value={idx.toString()}>
+                                    {month}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={selectedYear.toString()}
+                        onValueChange={(value) => setSelectedYear(parseInt(value))}
+                    >
+                        <SelectTrigger className="w-[100px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {years.map(year => (
+                                <SelectItem key={year} value={year.toString()}>
+                                    {year}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleNextMonth}
+                        disabled={selectedYear === now.getFullYear() && selectedMonth === now.getMonth()}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+
                     <Button onClick={exportAll} className="bg-emerald-600 hover:bg-emerald-700">
                         <Download className="mr-2 h-4 w-4" /> Export Semua
                     </Button>

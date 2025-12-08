@@ -225,19 +225,21 @@ function ReferenceManagement({
 }
 
 import CategoriesSettingsPage from "./categories/page"
+import NominalSettingsPage from "./nominals/page"
 
 export default function SettingsPage() {
     return (
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Pengaturan</h1>
-                <p className="text-muted-foreground">Kelola User, Halaqah, Shift, dan Kategori Transaksi.</p>
+                <p className="text-muted-foreground">Kelola User, Halaqah, Shift, Kategori, dan Nominal Transaksi.</p>
             </div>
 
             <Tabs defaultValue="user" className="w-full">
                 <TabsList>
                     <TabsTrigger value="user">Manajemen User</TabsTrigger>
                     <TabsTrigger value="categories">Kategori Transaksi</TabsTrigger>
+                    <TabsTrigger value="nominals">Atur Nominal</TabsTrigger>
                     <TabsTrigger value="halaqah">Daftar Halaqah</TabsTrigger>
                     <TabsTrigger value="shift">Daftar Shift</TabsTrigger>
                 </TabsList>
@@ -253,6 +255,14 @@ export default function SettingsPage() {
                     <Card>
                         <CardContent className="pt-6">
                             <CategoriesSettingsPage />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="nominals">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <NominalSettingsPage />
                         </CardContent>
                     </Card>
                 </TabsContent>

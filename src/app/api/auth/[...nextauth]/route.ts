@@ -1,6 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { prisma } from "@/lib/prisma"
+import { supabase } from "@/lib/supabase"
 import { compare } from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
@@ -18,34 +18,55 @@ export const authOptions: NextAuthOptions = {
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                if (!credentials?.username || !credentials?.password) {
-                    return null
-                }
+                try {
+                    console.log('🔐 Login attempt:', { username: credentials?.username });
 
-                const user = await prisma.user.findUnique({
-                    where: {
-                        username: credentials.username,
-                    },
-                })
+                    if (!credentials?.username || !credentials?.password) {
+                        console.log('❌ Missing credentials');
+                        return null
+                    }
 
-                if (!user) {
-                    return null
-                }
+                    console.log('🔍 Querying Supabase for user...');
+                    const { data: user, error } = await supabase
+                        .from('User')
+                        .select('*')
+                        .eq('username', credentials.username)
+                        .single()
 
-                const isPasswordValid = await compare(
-                    credentials.password,
-                    user.password
-                )
+                    console.log('🔍 Query completed');
 
-                if (!isPasswordValid) {
-                    return null
-                }
+                    if (error || !user) {
+                        console.log('❌ User not found:', credentials.username, error);
+                        return null
+                    }
 
-                return {
-                    id: user.id,
-                    name: user.name,
-                    email: user.username, // Using username as email for NextAuth compatibility if needed, or just extend types
-                    role: user.role,
+                    console.log('✅ User found:', { id: user.id, username: user.username, role: user.role });
+
+                    const isPasswordValid = await compare(
+                        credentials.password,
+                        user.password
+                    )
+
+                    console.log('🔑 Password valid:', isPasswordValid);
+
+                    if (!isPasswordValid) {
+                        console.log('❌ Invalid password for user:', credentials.username);
+                        return null
+                    }
+
+                    console.log('✅ Login successful:', { username: user.username, role: user.role });
+
+                    return {
+                        id: user.id,
+                        name: user.name,
+                        email: user.username,
+                        role: user.role,
+                    }
+                } catch (error) {
+                    console.error('💥 ERROR in authorize:', error);
+                    console.error('Error message:', error.message);
+                    console.error('Error stack:', error.stack);
+                    return null;
                 }
             },
         }),

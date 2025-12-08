@@ -120,24 +120,29 @@ export default function SantriMonitoringPage() {
                                                     if (sppData?.type === 'installment') {
                                                         const monthData = sppData.monthlyData.find((d: any) => d.month === monthIdx)
                                                         const status = monthData?.status || 'unpaid'
-                                                        let bgClass = 'bg-red-500' // Default unpaid (Red)
+
+                                                        let bgClass = 'bg-red-100 text-red-600' // Belum Bayar
+                                                        let icon = '-'
 
                                                         if (status === 'paid') {
-                                                            bgClass = 'bg-green-500' // Paid (Green)
+                                                            bgClass = 'bg-emerald-500 text-white shadow-sm' // Lunas
+                                                            icon = '✓'
                                                         } else if (status === 'partial') {
-                                                            bgClass = 'bg-amber-500' // Partial (Amber)
+                                                            bgClass = 'bg-yellow-400 text-white shadow-sm' // Sebagian
+                                                            icon = '-'
                                                         }
 
                                                         return (
-                                                            <TableCell key={idx}>
-                                                                <div className="flex justify-center">
-                                                                    <div className={`w-3 h-3 rounded-full ${bgClass}`} />
+                                                            <TableCell key={idx} className="text-center p-4">
+                                                                <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center ${bgClass}`}>
+                                                                    {icon}
                                                                 </div>
                                                             </TableCell>
                                                         )
                                                     } else {
-                                                        // Regular SPP view
+                                                        // Regular SPP - use same large circle format
                                                         const isPaid = sppData?.sppByMonth?.[monthIdx]
+
                                                         return (
                                                             <TableCell key={idx} className="text-center p-4">
                                                                 <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center ${isPaid ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-100 text-gray-400'}`}>
@@ -153,26 +158,26 @@ export default function SantriMonitoringPage() {
                                     {sppData?.type === 'installment' ? (
                                         <div className="mt-4 flex gap-4 text-sm justify-center">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs">✓</div>
                                                 <span>Lunas</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                                                <div className="w-4 h-4 rounded-full bg-yellow-400 flex items-center justify-center text-white text-xs">-</div>
                                                 <span>Sebagian</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                                <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xs">-</div>
                                                 <span>Belum Bayar</span>
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="mt-4 flex gap-4 text-sm justify-center">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 rounded-full bg-emerald-500"></div>
+                                                <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs">✓</div>
                                                 <span>Lunas</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 rounded-full bg-gray-100 border border-gray-200"></div>
+                                                <div className="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs">-</div>
                                                 <span>Belum Bayar</span>
                                             </div>
                                         </div>

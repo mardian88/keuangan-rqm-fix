@@ -27,8 +27,10 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useToast } from "@/contexts/toast-context"
 import { createTransaction } from "@/actions/transaction"
 import { getGurus } from "@/actions/guru"
+import { getTransactionCategories } from "@/actions/categories"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Command,
@@ -48,8 +50,10 @@ const formSchema = z.object({
 })
 
 export default function ExpenditurePage() {
+    const { showToast } = useToast()
     const [isLoading, setIsLoading] = useState(false)
     const [gurus, setGurus] = useState<{ id: string; name: string }[]>([])
+    const [categories, setCategories] = useState<any[]>([])
     const [openGuru, setOpenGuru] = useState(false)
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -63,15 +67,39 @@ export default function ExpenditurePage() {
     })
 
     const type = form.watch("type")
-    const showGuruSelect = type === "MUKAFAAH"
+
+    // Find selected category object
+    const selectedCategory = categories.find(c => c.code === type)
+
+    // Check if we should show Guru select
+    const showGuruSelect = selectedCategory && (
+        selectedCategory.code === "MUKAFAAH" ||
+        selectedCategory.name.toLowerCase().includes("guru") ||
+        selectedCategory.name.toLowerCase().includes("ustadz")
+    )
 
     useEffect(() => {
-        if (showGuruSelect) {
-            getGurus().then(setGurus)
-        }
-    }, [showGuruSelect])
+        getTransactionCategories("ADMIN", "EXPENSE").then(setCategories)
+        getGurus().then(setGurus)
+    }, [])
+
+    // (Cleaned up duplicate code)
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
+        // Client-side validation for "Lainnya"
+        if (selectedCategory && (
+            selectedCategory.name.toLowerCase().includes("lainnya") ||
+            selectedCategory.name.toLowerCase().includes("other")
+        )) {
+            if (values.description.length < 20) {
+                form.setError("description", {
+                    type: "manual",
+                    message: "Untuk kategori ini, keterangan wajib minimal 20 karakter."
+                })
+                return
+            }
+        }
+
         setIsLoading(true)
         try {
             await createTransaction({
@@ -89,10 +117,10 @@ export default function ExpenditurePage() {
                 type: "PENGELUARAN_ADMIN",
                 teacherId: undefined,
             })
-            alert("Pengeluaran berhasil disimpan")
-        } catch (error) {
+            showToast("Pengeluaran berhasil disimpan", "success")
+        } catch (error: any) {
             console.error(error)
-            alert("Gagal menyimpan pengeluaran")
+            showToast(error.message || "Gagal menyimpan pengeluaran", "error")
         } finally {
             setIsLoading(false)
         }
@@ -120,8 +148,11 @@ export default function ExpenditurePage() {
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="PENGELUARAN_ADMIN">Operasional Admin</SelectItem>
-                                                <SelectItem value="MUKAFAAH">Mukafa'ah (Gaji Guru)</SelectItem>
+                                                {categories.map((cat) => (
+                                                    <SelectItem key={cat.id} value={cat.code}>
+                                                        {cat.name}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />

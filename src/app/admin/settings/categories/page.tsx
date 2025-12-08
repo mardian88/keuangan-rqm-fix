@@ -50,6 +50,7 @@ const formSchema = z.object({
     type: z.enum(["INCOME", "EXPENSE"]),
     showToKomite: z.boolean(),
     showToAdmin: z.boolean(),
+    requiresHandover: z.boolean(),
 })
 
 export default function CategoriesSettingsPage() {
@@ -66,6 +67,7 @@ export default function CategoriesSettingsPage() {
             type: "INCOME",
             showToKomite: true,
             showToAdmin: true,
+            requiresHandover: false,
         },
     })
 
@@ -92,7 +94,8 @@ export default function CategoriesSettingsPage() {
                     name: values.name,
                     showToKomite: values.showToKomite,
                     showToAdmin: values.showToAdmin,
-                    isActive: true // Always active on update for now
+                    isActive: true, // Always active on update for now
+                    requiresHandover: values.requiresHandover
                 })
                 showToast("Kategori berhasil diperbarui", "success")
             } else {
@@ -128,6 +131,7 @@ export default function CategoriesSettingsPage() {
             type: category.type as "INCOME" | "EXPENSE",
             showToKomite: category.showToKomite,
             showToAdmin: category.showToAdmin,
+            requiresHandover: category.requiresHandover || false,
         })
         setIsDialogOpen(true)
     }
@@ -239,6 +243,27 @@ export default function CategoriesSettingsPage() {
                                             </FormItem>
                                         )}
                                     />
+                                    <FormField
+                                        control={form.control}
+                                        name="requiresHandover"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-blue-50 dark:bg-blue-950">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel>Serah Terima (Handover)</FormLabel>
+                                                    <FormDescription>
+                                                        Transaksi kategori ini perlu diserahkan dari Admin ke Komite? (Hanya untuk PEMASUKAN)
+                                                    </FormDescription>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                        disabled={form.watch("type") === "EXPENSE"}
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
                                 <DialogFooter>
                                     <Button type="submit">Simpan</Button>
@@ -258,6 +283,7 @@ export default function CategoriesSettingsPage() {
                             <TableHead>Jenis</TableHead>
                             <TableHead className="text-center">Komite</TableHead>
                             <TableHead className="text-center">Admin</TableHead>
+                            <TableHead className="text-center">Handover</TableHead>
                             <TableHead className="text-center">System</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                         </TableRow>
@@ -265,13 +291,13 @@ export default function CategoriesSettingsPage() {
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8">
+                                <TableCell colSpan={8} className="text-center py-8">
                                     <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                                 </TableCell>
                             </TableRow>
                         ) : categories.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                     Belum ada kategori.
                                 </TableCell>
                             </TableRow>
@@ -290,6 +316,13 @@ export default function CategoriesSettingsPage() {
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {cat.showToAdmin ? <Check className="h-4 w-4 mx-auto text-green-500" /> : <X className="h-4 w-4 mx-auto text-red-300" />}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        {cat.type === "INCOME" && cat.requiresHandover ? (
+                                            <Badge variant="default" className="text-xs bg-blue-500">Ya</Badge>
+                                        ) : (
+                                            <span className="text-muted-foreground text-xs">-</span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {cat.isSystem && <Badge variant="secondary" className="text-xs">System</Badge>}

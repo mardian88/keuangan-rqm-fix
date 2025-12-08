@@ -1,6 +1,6 @@
 "use server"
 
-import { prisma } from "@/lib/prisma"
+import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
@@ -13,22 +13,25 @@ export async function getSantriHistory() {
         }
     }
 
-    const transactions = await prisma.transaction.findMany({
-        where: {
-            studentId: session.user.id,
-        },
-        orderBy: {
-            date: "desc",
-        },
-        include: {
-            creator: {
-                select: {
-                    name: true,
-                    role: true
-                }
-            }
+    const { data: transactions, error } = await supabaseAdmin
+        .from('Transaction')
+        .select(`
+            *,
+            creator:creatorId (
+                name,
+                role
+            )
+        `)
+        .eq('studentId', session.user.id)
+        .order('date', { ascending: false })
+
+    if (error) {
+        console.error('Error fetching santri history:', error)
+        return {
+            transactions: [],
+            currentTabungan: 0
         }
-    })
+    }
 
     // Calculate totals
     const totalTabungan = transactions

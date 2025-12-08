@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useToast } from "@/contexts/toast-context"
 import { createTransaction } from "@/actions/transaction"
 import { getTransactionCategories } from "@/actions/categories"
 import { getStudents } from "@/actions/user"
@@ -69,6 +70,7 @@ const formSchema = z.object({
 })
 
 export default function KomiteExpenditurePage() {
+    const { showToast } = useToast()
     const [isLoading, setIsLoading] = useState(false)
     const [categories, setCategories] = useState<any[]>([])
     const [students, setStudents] = useState<{ id: string; name: string }[]>([])
@@ -91,18 +93,43 @@ export default function KomiteExpenditurePage() {
 
     const type = form.watch("type")
     const studentId = form.watch("studentId")
-    const showStudentSelect = type === "PENARIKAN_TABUNGAN"
+
+    // Find selected category to check for keywords
+    const selectedCategory = categories.find(c => c.code === type)
+
+    // Check if we should show student select
+    // Logic: Explicit "tabungan" types OR name contains "santri"
+    const showStudentSelect = selectedCategory && (
+        selectedCategory.code === "PENARIKAN_TABUNGAN" ||
+        selectedCategory.name.toLowerCase().includes("santri") ||
+        selectedCategory.name.toLowerCase().includes("tabungan")
+    )
 
     useEffect(() => {
-        if (type === "PENARIKAN_TABUNGAN" && studentId) {
+        // Auto-fill description if Penarikan Tabungan
+        if (showStudentSelect && studentId && selectedCategory?.code === "PENARIKAN_TABUNGAN") {
             const student = students.find(s => s.id === studentId)
             if (student) {
                 form.setValue("description", `Penarikan Tabungan ${student.name}`)
             }
         }
-    }, [type, studentId, students, form])
+    }, [type, studentId, students, form, showStudentSelect, selectedCategory])
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
+        // Client-side validation for "Lainnya"
+        if (selectedCategory && (
+            selectedCategory.name.toLowerCase().includes("lainnya") ||
+            selectedCategory.name.toLowerCase().includes("other")
+        )) {
+            if (values.description.length < 20) {
+                form.setError("description", {
+                    type: "manual",
+                    message: "Untuk kategori ini, keterangan wajib minimal 20 karakter."
+                })
+                return
+            }
+        }
+
         setIsLoading(true)
         try {
             await createTransaction(values)
@@ -113,10 +140,11 @@ export default function KomiteExpenditurePage() {
                 type: values.type,
                 studentId: undefined,
             })
-            alert("Pengeluaran berhasil disimpan")
-        } catch (error) {
+            showToast("Pengeluaran berhasil disimpan", "success")
+        } catch (error: any) {
             console.error(error)
-            alert("Gagal menyimpan pengeluaran")
+            // Show backend error if any (e.g. balance insufficient)
+            showToast(error.message || "Gagal menyimpan pengeluaran", "error")
         } finally {
             setIsLoading(false)
         }
