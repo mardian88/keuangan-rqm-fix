@@ -209,13 +209,12 @@ export async function getMonthlyPaymentStatus(year: number) {
             name: student.name,
             nis: isKomite ? "" : student.username,
             halaqahId: student.halaqahId,
-            halaqah: student.halaqah?.name || "-",
+            halaqah: (Array.isArray(student.halaqah) ? student.halaqah[0]?.name : (student.halaqah as any)?.name) || "-",
             sppByMonth,
             kasByMonth,
         }
     })
 }
-
 
 export async function getHalaqahList() {
     const session = await getServerSession(authOptions)
@@ -286,7 +285,7 @@ export async function getTabunganBalances() {
             name: student.name,
             nis: isKomite ? "" : student.username,
             halaqahId: student.halaqahId,
-            halaqah: student.halaqah?.name || "-",
+            halaqah: (Array.isArray(student.halaqah) ? student.halaqah[0]?.name : (student.halaqah as any)?.name) || "-",
             saldoTabungan,
         }
     })
