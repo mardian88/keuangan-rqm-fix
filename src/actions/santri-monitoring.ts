@@ -46,7 +46,7 @@ export async function getSantriMonthlyPaymentStatus(year: number) {
         id: student.id,
         name: student.name,
         nis: student.username,
-        halaqah: student.halaqah?.name || "-",
+        halaqah: (Array.isArray(student.halaqah) ? student.halaqah[0]?.name : (student.halaqah as any)?.name) || "-",
         kasByMonth,
     }
 }
