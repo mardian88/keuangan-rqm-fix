@@ -84,8 +84,9 @@ const massFormSchema = z.object({
 })
 
 import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 
-export default function KomiteTransactionPage() {
+function KomiteTransactionContent() {
     const [isLoading, setIsLoading] = useState(false)
     const [students, setStudents] = useState<{ id: string; name: string }[]>([])
     const [categories, setCategories] = useState<any[]>([])
@@ -555,3 +556,12 @@ export default function KomiteTransactionPage() {
         </div>
     )
 }
+
+export default function KomiteTransactionPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
+            <KomiteTransactionContent />
+        </Suspense>
+    )
+}
+
