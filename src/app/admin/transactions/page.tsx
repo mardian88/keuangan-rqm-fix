@@ -113,13 +113,14 @@ function TransactionContent() {
 
     const type = form.watch("type")
 
-    // Check if category requires student (SPP, Tabungan, Kas - inclusive check)
+    // Check if category requires student (SPP, Tabungan, Kas, or any category with "Santri" in name)
     const selectedCategory = categories.find(c => c.code === type)
     const catName = selectedCategory?.name?.toLowerCase() || ""
     const showStudentSelect = ["SPP", "TABUNGAN", "KAS", "UANG_KAS"].includes(type) ||
         catName.includes("spp") ||
         catName.includes("tabungan") ||
-        catName.includes("kas")
+        catName.includes("kas") ||
+        catName.includes("santri")  // Auto-detect categories with "Santri" in name
 
     // Filter students based on transaction type
     // For SPP: exclude students with active installments (they should use cicilan page)

@@ -21,7 +21,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Loader2, Search, Plus } from "lucide-react"
-import { getMonthlyPaymentStatus, getHalaqahList, getTabunganBalances } from "@/actions/monitoring"
+import { getMonthlyPaymentStatus, getHalaqahList, getTabunganBalances, getMonitoringCategories, getDynamicCategoryPaymentStatus } from "@/actions/monitoring"
 
 const MONTHS = [
     "DES", "JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV"
@@ -40,6 +40,15 @@ type StudentPayment = {
     kasByMonth: Record<number, boolean>
 }
 
+type DynamicCategoryPayment = {
+    id: string
+    name: string
+    nis: string
+    halaqahId: string | null
+    halaqah: string
+    paymentsByMonth: Record<number, boolean>
+}
+
 type TabunganData = {
     id: string
     name: string
@@ -47,6 +56,11 @@ type TabunganData = {
     halaqahId: string | null
     halaqah: string
     saldoTabungan: number
+}
+
+type MonitoringCategory = {
+    code: string
+    name: string
 }
 
 type Halaqah = {
@@ -58,12 +72,15 @@ export default function MonitoringPage() {
     const [paymentData, setPaymentData] = useState<StudentPayment[]>([])
     const [tabunganData, setTabunganData] = useState<TabunganData[]>([])
     const [halaqahs, setHalaqahs] = useState<Halaqah[]>([])
+    const [dynamicCategories, setDynamicCategories] = useState<MonitoringCategory[]>([])
+    const [dynamicCategoryData, setDynamicCategoryData] = useState<Map<string, DynamicCategoryPayment[]>>(new Map())
     const [isLoading, setIsLoading] = useState(true)
 
     const [selectedYear, setSelectedYear] = useState(2025)
     const [availableYears, setAvailableYears] = useState([2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038, 2039, 2040])
     const [selectedHalaqah, setSelectedHalaqah] = useState<string>("all")
     const [searchQuery, setSearchQuery] = useState("")
+    const [selectedCategory, setSelectedCategory] = useState<string>("spp")
 
     useEffect(() => {
         loadData()
@@ -72,14 +89,24 @@ export default function MonitoringPage() {
     async function loadData() {
         try {
             setIsLoading(true)
-            const [payments, tabungan, halaqahList] = await Promise.all([
+            const [payments, tabungan, halaqahList, categories] = await Promise.all([
                 getMonthlyPaymentStatus(selectedYear),
                 getTabunganBalances(),
-                getHalaqahList()
+                getHalaqahList(),
+                getMonitoringCategories()
             ])
             setPaymentData(payments)
             setTabunganData(tabungan)
             setHalaqahs(halaqahList)
+            setDynamicCategories(categories)
+
+            // Load data for each dynamic category
+            const categoryDataMap = new Map<string, DynamicCategoryPayment[]>()
+            for (const category of categories) {
+                const data = await getDynamicCategoryPaymentStatus(category.code, selectedYear)
+                categoryDataMap.set(category.code, data)
+            }
+            setDynamicCategoryData(categoryDataMap)
         } catch (error) {
             console.error(error)
         } finally {
@@ -184,6 +211,26 @@ export default function MonitoringPage() {
                                 className="max-w-sm"
                             />
                         </div>
+
+                        {/* Category Selector */}
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium">Kategori:</label>
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <SelectTrigger className="w-[200px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="spp">SPP</SelectItem>
+                                    <SelectItem value="kas">Uang Kas</SelectItem>
+                                    <SelectItem value="tabungan">Tabungan</SelectItem>
+                                    {dynamicCategories.map(cat => (
+                                        <SelectItem key={cat.code} value={cat.code}>
+                                            {cat.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -193,15 +240,9 @@ export default function MonitoringPage() {
                     <Loader2 className="animate-spin h-8 w-8" />
                 </div>
             ) : (
-                <Tabs defaultValue="spp" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="spp">SPP</TabsTrigger>
-                        <TabsTrigger value="kas">Uang Kas</TabsTrigger>
-                        <TabsTrigger value="tabungan">Tabungan</TabsTrigger>
-                    </TabsList>
-
-                    {/* SPP Tab */}
-                    <TabsContent value="spp">
+                <>
+                    {/* SPP View */}
+                    {selectedCategory === "spp" && (
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-base md:text-lg">Monitoring SPP - Tahun {selectedYear}</CardTitle>
@@ -251,10 +292,10 @@ export default function MonitoringPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    </TabsContent>
+                    )}
 
-                    {/* KAS Tab */}
-                    <TabsContent value="kas">
+                    {/* KAS View */}
+                    {selectedCategory === "kas" && (
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-base md:text-lg">Monitoring Uang Kas - Tahun {selectedYear}</CardTitle>
@@ -304,10 +345,10 @@ export default function MonitoringPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    </TabsContent>
+                    )}
 
-                    {/* Tabungan Tab */}
-                    <TabsContent value="tabungan">
+                    {/* Tabungan View */}
+                    {selectedCategory === "tabungan" && (
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-base md:text-lg">Saldo Tabungan Santri</CardTitle>
@@ -347,8 +388,73 @@ export default function MonitoringPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    </TabsContent>
-                </Tabs>
+                    )}
+
+                    {/* Dynamic Category Views */}
+                    {dynamicCategories.map(category => {
+                        if (selectedCategory !== category.code) return null
+
+                        const categoryData = dynamicCategoryData.get(category.code) || []
+                        const filteredData = categoryData.filter(student => {
+                            const matchesHalaqah = selectedHalaqah === "all" || student.halaqahId === selectedHalaqah
+                            const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                student.nis.toLowerCase().includes(searchQuery.toLowerCase())
+                            return matchesHalaqah && matchesSearch
+                        })
+
+                        return (
+                            <Card key={category.code}>
+                                <CardHeader>
+                                    <CardTitle className="text-base md:text-lg">Monitoring {category.name} - Tahun {selectedYear}</CardTitle>
+                                    <CardDescription>Status pembayaran {category.name} per bulan</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto -mx-4 md:mx-0">
+                                        <div className="inline-block min-w-full align-middle">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="sticky left-0 bg-background z-10 min-w-[150px] md:min-w-[200px] text-xs md:text-sm">Nama Santri</TableHead>
+                                                        <TableHead className="text-center min-w-[50px] md:min-w-[60px] text-xs md:text-sm">NIS</TableHead>
+                                                        {MONTHS.map((month, idx) => (
+                                                            <TableHead key={idx} className="text-center min-w-[40px] md:min-w-[60px] text-xs md:text-sm">
+                                                                {month}
+                                                            </TableHead>
+                                                        ))}
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {filteredData.map((student) => (
+                                                        <TableRow key={student.id}>
+                                                            <TableCell className="sticky left-0 bg-background z-10 font-medium text-xs md:text-sm">
+                                                                {student.name}
+                                                            </TableCell>
+                                                            <TableCell className="text-center text-xs md:text-sm text-muted-foreground">
+                                                                {student.nis}
+                                                            </TableCell>
+                                                            {MONTH_INDICES.map((monthIdx, idx) => (
+                                                                <TableCell key={idx}>
+                                                                    <PaymentIndicator isPaid={!!student.paymentsByMonth[monthIdx]} />
+                                                                </TableCell>
+                                                            ))}
+                                                        </TableRow>
+                                                    ))}
+                                                    {filteredData.length === 0 && (
+                                                        <TableRow>
+                                                            <TableCell colSpan={14} className="text-center text-muted-foreground py-8 text-sm">
+                                                                Tidak ada data santri.
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )
+                    })}
+                </>
             )}
         </div>
     )

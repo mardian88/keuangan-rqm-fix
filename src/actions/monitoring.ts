@@ -290,3 +290,94 @@ export async function getTabunganBalances() {
         }
     })
 }
+
+export async function getMonitoringCategories() {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "KOMITE")) {
+        throw new Error("Unauthorized")
+    }
+
+    // Get all income categories that contain "santri" in name (case-insensitive)
+    // Exclude standard categories (SPP, KAS, TABUNGAN) as they have dedicated tabs
+    const { data: categories } = await supabaseAdmin
+        .from('TransactionCategory')
+        .select('code, name')
+        .eq('type', 'INCOME')
+
+    if (!categories) return []
+
+    const dynamicCategories = categories.filter(cat => {
+        const name = cat.name.toLowerCase()
+        const code = cat.code.toUpperCase()
+        // Include if contains "santri" but exclude standard categories
+        return name.includes('santri') &&
+            !['SPP', 'KAS', 'UANG_KAS', 'TABUNGAN', 'PENARIKAN_TABUNGAN', 'CICILAN_SPP'].includes(code)
+    })
+
+    return dynamicCategories.map(cat => ({
+        code: cat.code,
+        name: cat.name
+    }))
+}
+
+export async function getDynamicCategoryPaymentStatus(categoryCode: string, year: number) {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "KOMITE")) {
+        throw new Error("Unauthorized")
+    }
+
+    const { data: students } = await supabaseAdmin
+        .from('User')
+        .select(`
+            id,
+            name,
+            username,
+            halaqahId,
+            halaqah:halaqahId (id, name)
+        `)
+        .eq('role', 'SANTRI')
+        .eq('isActive', true)
+        .order('name', { ascending: true })
+
+    if (!students) return []
+
+    const isKomite = session.user.role === "KOMITE"
+
+    // Get all transactions for this category in the year
+    const studentIds = students.map(s => s.id)
+    const { data: allTransactions } = await supabaseAdmin
+        .from('Transaction')
+        .select('studentId, type, date')
+        .in('studentId', studentIds)
+        .eq('type', categoryCode)
+        .gte('date', `${year}-01-01`)
+        .lte('date', `${year}-12-31`)
+
+    // Group by student
+    const transactionsByStudent = new Map<string, any[]>()
+    allTransactions?.forEach(t => {
+        if (!transactionsByStudent.has(t.studentId)) {
+            transactionsByStudent.set(t.studentId, [])
+        }
+        transactionsByStudent.get(t.studentId)!.push(t)
+    })
+
+    return students.map(student => {
+        const paymentsByMonth: Record<number, boolean> = {}
+
+        const transactions = transactionsByStudent.get(student.id) || []
+        transactions.forEach(transaction => {
+            const month = new Date(transaction.date).getMonth()
+            paymentsByMonth[month] = true
+        })
+
+        return {
+            id: student.id,
+            name: student.name,
+            nis: isKomite ? "" : student.username,
+            halaqahId: student.halaqahId,
+            halaqah: (Array.isArray(student.halaqah) ? student.halaqah[0]?.name : (student.halaqah as any)?.name) || "-",
+            paymentsByMonth,
+        }
+    })
+}

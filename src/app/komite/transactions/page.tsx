@@ -127,13 +127,14 @@ function KomiteTransactionContent() {
     })
 
     const type = form.watch("type")
-    // Show student select for specific system categories that require it
-    const showStudentSelect = targetTypes.includes(type)
+    // Show student select for specific system categories that require it or categories with "Santri" in name
+    const selectedCategory = categories.find(c => c.code === type)
+    const catName = selectedCategory?.name?.toLowerCase() || ""
+    const showStudentSelect = targetTypes.includes(type) || catName.includes("santri")
 
     // Clear studentId if type changes to something that doesn't require it? 
     // Maybe better not to force clear to avoid UX annoyance, but validation handles it.
 
-    const selectedCategory = categories.find(c => c.code === type)
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         // Client-side validation for "Lainnya"
