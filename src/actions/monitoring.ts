@@ -297,24 +297,19 @@ export async function getMonitoringCategories() {
         throw new Error("Unauthorized")
     }
 
-    // Get all income categories that contain "santri" in name (case-insensitive)
-    // Exclude standard categories (SPP, KAS, TABUNGAN) as they have dedicated tabs
+    // Only show these 3 specific categories for monitoring
+    const allowedCategories = ["UANG_KAS", "TABUNGAN", "INFAQ_BAGI_RAPORT_SANTRI"]
+
+    // Get all income categories
     const { data: categories } = await supabaseAdmin
         .from('TransactionCategory')
         .select('code, name')
         .eq('type', 'INCOME')
+        .in('code', allowedCategories)
 
     if (!categories) return []
 
-    const dynamicCategories = categories.filter(cat => {
-        const name = cat.name.toLowerCase()
-        const code = cat.code.toUpperCase()
-        // Include if contains "santri" but exclude standard categories
-        return name.includes('santri') &&
-            !['SPP', 'KAS', 'UANG_KAS', 'TABUNGAN', 'PENARIKAN_TABUNGAN', 'CICILAN_SPP'].includes(code)
-    })
-
-    return dynamicCategories.map(cat => ({
+    return categories.map(cat => ({
         code: cat.code,
         name: cat.name
     }))
@@ -380,4 +375,25 @@ export async function getDynamicCategoryPaymentStatus(categoryCode: string, year
             paymentsByMonth,
         }
     })
+}
+
+export async function getHandoverCategories() {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "KOMITE")) {
+        throw new Error("Unauthorized")
+    }
+
+    // Get all income categories with requiresHandover: true
+    const { data: categories } = await supabaseAdmin
+        .from('TransactionCategory')
+        .select('code, name, requiresHandover')
+        .eq('type', 'INCOME')
+        .eq('requiresHandover', true)
+
+    if (!categories) return []
+
+    return categories.map(cat => ({
+        code: cat.code,
+        name: cat.name
+    }))
 }

@@ -247,45 +247,45 @@ export default async function AdminDashboardPage() {
                 </Alert>
             )}
 
-            {/* 3. Quick Actions Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            {/* 3. Quick Actions Grid - Compact */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                 <Link href="/admin/transactions" className="group">
                     <Card className="hover:shadow-md transition-all cursor-pointer border-slate-200 h-full">
-                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                            <div className="p-3 rounded-full bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                                <PlusCircle className="h-6 w-6" />
+                        <CardContent className="p-3 flex flex-col items-center text-center gap-1.5">
+                            <div className="p-2 rounded-full bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                <PlusCircle className="h-5 w-5" />
                             </div>
-                            <span className="font-medium text-sm text-slate-700">Input Transaksi</span>
+                            <span className="font-medium text-xs text-slate-700">Input Transaksi</span>
                         </CardContent>
                     </Card>
                 </Link>
                 <Link href="/admin/laporan-transaksi" className="group">
                     <Card className="hover:shadow-md transition-all cursor-pointer border-slate-200 h-full">
-                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                            <div className="p-3 rounded-full bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                <FileText className="h-6 w-6" />
+                        <CardContent className="p-3 flex flex-col items-center text-center gap-1.5">
+                            <div className="p-2 rounded-full bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                <FileText className="h-5 w-5" />
                             </div>
-                            <span className="font-medium text-sm text-slate-700">Laporan</span>
+                            <span className="font-medium text-xs text-slate-700">Laporan</span>
                         </CardContent>
                     </Card>
                 </Link>
                 <Link href="/admin/santri" className="group">
                     <Card className="hover:shadow-md transition-all cursor-pointer border-slate-200 h-full">
-                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                            <div className="p-3 rounded-full bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                <Users className="h-6 w-6" />
+                        <CardContent className="p-3 flex flex-col items-center text-center gap-1.5">
+                            <div className="p-2 rounded-full bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                <Users className="h-5 w-5" />
                             </div>
-                            <span className="font-medium text-sm text-slate-700">Data Santri</span>
+                            <span className="font-medium text-xs text-slate-700">Data Santri</span>
                         </CardContent>
                     </Card>
                 </Link>
                 <Link href="/admin/expenditure" className="group">
                     <Card className="hover:shadow-md transition-all cursor-pointer border-slate-200 h-full">
-                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                            <div className="p-3 rounded-full bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                                <CreditCard className="h-6 w-6" />
+                        <CardContent className="p-3 flex flex-col items-center text-center gap-1.5">
+                            <div className="p-2 rounded-full bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                <CreditCard className="h-5 w-5" />
                             </div>
-                            <span className="font-medium text-sm text-slate-700">Pengeluaran</span>
+                            <span className="font-medium text-xs text-slate-700">Pengeluaran</span>
                         </CardContent>
                     </Card>
                 </Link>
@@ -382,8 +382,8 @@ export default async function AdminDashboardPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                {/* Recent Transactions List */}
-                <Card className="md:col-span-2 lg:col-span-4 border-slate-200 shadow-sm">
+                {/* Recent Transactions List - Scrollable */}
+                <Card className="md:col-span-2 lg:col-span-4 border-slate-200 shadow-sm h-[calc(100vh-28rem)]">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="text-lg">Transaksi Terakhir</CardTitle>
@@ -393,7 +393,7 @@ export default async function AdminDashboardPage() {
                             Lihat Semua
                         </Link>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="h-[calc(100%-5rem)] overflow-y-auto">
                         {stats.recentTransactions.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
                                 <LayoutDashboard className="h-12 w-12 mx-auto mb-3 opacity-20" />

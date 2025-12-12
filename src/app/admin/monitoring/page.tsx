@@ -240,173 +240,14 @@ export default function MonitoringPage() {
                     <Loader2 className="animate-spin h-8 w-8" />
                 </div>
             ) : (
-                <>
-                    {/* SPP View */}
-                    {selectedCategory === "spp" && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base md:text-lg">Monitoring SPP - Tahun {selectedYear}</CardTitle>
-                                <CardDescription>Status pembayaran SPP per bulan</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="overflow-x-auto -mx-4 md:mx-0">
-                                    <div className="inline-block min-w-full align-middle">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="sticky left-0 bg-background z-10 min-w-[150px] md:min-w-[200px] text-xs md:text-sm">Nama Santri</TableHead>
-                                                    <TableHead className="text-center min-w-[50px] md:min-w-[60px] text-xs md:text-sm">NIS</TableHead>
-                                                    {MONTHS.map((month, idx) => (
-                                                        <TableHead key={idx} className="text-center min-w-[40px] md:min-w-[60px] text-xs md:text-sm">
-                                                            {month}
-                                                        </TableHead>
-                                                    ))}
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {filteredPaymentData.map((student) => (
-                                                    <TableRow key={student.id}>
-                                                        <TableCell className="sticky left-0 bg-background z-10 font-medium text-xs md:text-sm">
-                                                            {student.name}
-                                                        </TableCell>
-                                                        <TableCell className="text-center text-xs md:text-sm text-muted-foreground">
-                                                            {student.nis}
-                                                        </TableCell>
-                                                        {MONTH_INDICES.map((monthIdx, idx) => (
-                                                            <TableCell key={idx}>
-                                                                <PaymentIndicator isPaid={!!student.sppByMonth[monthIdx]} />
-                                                            </TableCell>
-                                                        ))}
-                                                    </TableRow>
-                                                ))}
-                                                {filteredPaymentData.length === 0 && (
-                                                    <TableRow>
-                                                        <TableCell colSpan={14} className="text-center text-muted-foreground py-8 text-sm">
-                                                            Tidak ada data santri.
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* KAS View */}
-                    {selectedCategory === "kas" && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base md:text-lg">Monitoring Uang Kas - Tahun {selectedYear}</CardTitle>
-                                <CardDescription>Status pembayaran Uang Kas per bulan</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="overflow-x-auto -mx-4 md:mx-0">
-                                    <div className="inline-block min-w-full align-middle">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="sticky left-0 bg-background z-10 min-w-[150px] md:min-w-[200px] text-xs md:text-sm">Nama Santri</TableHead>
-                                                    <TableHead className="text-center min-w-[50px] md:min-w-[60px] text-xs md:text-sm">NIS</TableHead>
-                                                    {MONTHS.map((month, idx) => (
-                                                        <TableHead key={idx} className="text-center min-w-[40px] md:min-w-[60px] text-xs md:text-sm">
-                                                            {month}
-                                                        </TableHead>
-                                                    ))}
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {filteredPaymentData.map((student) => (
-                                                    <TableRow key={student.id}>
-                                                        <TableCell className="sticky left-0 bg-background z-10 font-medium text-xs md:text-sm">
-                                                            {student.name}
-                                                        </TableCell>
-                                                        <TableCell className="text-center text-xs md:text-sm text-muted-foreground">
-                                                            {student.nis}
-                                                        </TableCell>
-                                                        {MONTH_INDICES.map((monthIdx, idx) => (
-                                                            <TableCell key={idx}>
-                                                                <PaymentIndicator isPaid={!!student.kasByMonth[monthIdx]} />
-                                                            </TableCell>
-                                                        ))}
-                                                    </TableRow>
-                                                ))}
-                                                {filteredPaymentData.length === 0 && (
-                                                    <TableRow>
-                                                        <TableCell colSpan={14} className="text-center text-muted-foreground py-8 text-sm">
-                                                            Tidak ada data santri.
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Tabungan View */}
-                    {selectedCategory === "tabungan" && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base md:text-lg">Saldo Tabungan Santri</CardTitle>
-                                <CardDescription>Saldo tabungan seluruh santri</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="overflow-x-auto -mx-4 md:mx-0">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="text-xs md:text-sm">NIS</TableHead>
-                                                <TableHead className="text-xs md:text-sm">Nama Santri</TableHead>
-                                                <TableHead className="text-xs md:text-sm">Halaqah</TableHead>
-                                                <TableHead className="text-right text-xs md:text-sm">Saldo Tabungan</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredTabunganData.map((student) => (
-                                                <TableRow key={student.id}>
-                                                    <TableCell className="font-medium text-xs md:text-sm">{student.nis}</TableCell>
-                                                    <TableCell className="text-xs md:text-sm">{student.name}</TableCell>
-                                                    <TableCell className="text-xs md:text-sm">{student.halaqah}</TableCell>
-                                                    <TableCell className="text-right font-semibold text-xs md:text-sm">
-                                                        {formatRupiah(student.saldoTabungan)}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                            {filteredTabunganData.length === 0 && (
-                                                <TableRow>
-                                                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8 text-sm">
-                                                        Tidak ada data santri.
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Dynamic Category Views */}
-                    {dynamicCategories.map(category => {
-                        if (selectedCategory !== category.code) return null
-
-                        const categoryData = dynamicCategoryData.get(category.code) || []
-                        const filteredData = categoryData.filter(student => {
-                            const matchesHalaqah = selectedHalaqah === "all" || student.halaqahId === selectedHalaqah
-                            const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                student.nis.toLowerCase().includes(searchQuery.toLowerCase())
-                            return matchesHalaqah && matchesSearch
-                        })
-
-                        return (
-                            <Card key={category.code}>
+                <div className="h-[calc(100vh-20rem)] overflow-y-auto">
+                    <>
+                        {/* SPP View */}
+                        {selectedCategory === "spp" && (
+                            <Card>
                                 <CardHeader>
-                                    <CardTitle className="text-base md:text-lg">Monitoring {category.name} - Tahun {selectedYear}</CardTitle>
-                                    <CardDescription>Status pembayaran {category.name} per bulan</CardDescription>
+                                    <CardTitle className="text-base md:text-lg">Monitoring SPP - Tahun {selectedYear}</CardTitle>
+                                    <CardDescription>Status pembayaran SPP per bulan</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="overflow-x-auto -mx-4 md:mx-0">
@@ -424,7 +265,7 @@ export default function MonitoringPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {filteredData.map((student) => (
+                                                    {filteredPaymentData.map((student) => (
                                                         <TableRow key={student.id}>
                                                             <TableCell className="sticky left-0 bg-background z-10 font-medium text-xs md:text-sm">
                                                                 {student.name}
@@ -434,12 +275,12 @@ export default function MonitoringPage() {
                                                             </TableCell>
                                                             {MONTH_INDICES.map((monthIdx, idx) => (
                                                                 <TableCell key={idx}>
-                                                                    <PaymentIndicator isPaid={!!student.paymentsByMonth[monthIdx]} />
+                                                                    <PaymentIndicator isPaid={!!student.sppByMonth[monthIdx]} />
                                                                 </TableCell>
                                                             ))}
                                                         </TableRow>
                                                     ))}
-                                                    {filteredData.length === 0 && (
+                                                    {filteredPaymentData.length === 0 && (
                                                         <TableRow>
                                                             <TableCell colSpan={14} className="text-center text-muted-foreground py-8 text-sm">
                                                                 Tidak ada data santri.
@@ -452,10 +293,172 @@ export default function MonitoringPage() {
                                     </div>
                                 </CardContent>
                             </Card>
-                        )
-                    })}
-                </>
+                        )}
+
+                        {/* KAS View */}
+                        {selectedCategory === "kas" && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base md:text-lg">Monitoring Uang Kas - Tahun {selectedYear}</CardTitle>
+                                    <CardDescription>Status pembayaran Uang Kas per bulan</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto -mx-4 md:mx-0">
+                                        <div className="inline-block min-w-full align-middle">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="sticky left-0 bg-background z-10 min-w-[150px] md:min-w-[200px] text-xs md:text-sm">Nama Santri</TableHead>
+                                                        <TableHead className="text-center min-w-[50px] md:min-w-[60px] text-xs md:text-sm">NIS</TableHead>
+                                                        {MONTHS.map((month, idx) => (
+                                                            <TableHead key={idx} className="text-center min-w-[40px] md:min-w-[60px] text-xs md:text-sm">
+                                                                {month}
+                                                            </TableHead>
+                                                        ))}
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {filteredPaymentData.map((student) => (
+                                                        <TableRow key={student.id}>
+                                                            <TableCell className="sticky left-0 bg-background z-10 font-medium text-xs md:text-sm">
+                                                                {student.name}
+                                                            </TableCell>
+                                                            <TableCell className="text-center text-xs md:text-sm text-muted-foreground">
+                                                                {student.nis}
+                                                            </TableCell>
+                                                            {MONTH_INDICES.map((monthIdx, idx) => (
+                                                                <TableCell key={idx}>
+                                                                    <PaymentIndicator isPaid={!!student.kasByMonth[monthIdx]} />
+                                                                </TableCell>
+                                                            ))}
+                                                        </TableRow>
+                                                    ))}
+                                                    {filteredPaymentData.length === 0 && (
+                                                        <TableRow>
+                                                            <TableCell colSpan={14} className="text-center text-muted-foreground py-8 text-sm">
+                                                                Tidak ada data santri.
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Tabungan View */}
+                        {selectedCategory === "tabungan" && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base md:text-lg">Saldo Tabungan Santri</CardTitle>
+                                    <CardDescription>Saldo tabungan seluruh santri</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto -mx-4 md:mx-0">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="text-xs md:text-sm">NIS</TableHead>
+                                                    <TableHead className="text-xs md:text-sm">Nama Santri</TableHead>
+                                                    <TableHead className="text-xs md:text-sm">Halaqah</TableHead>
+                                                    <TableHead className="text-right text-xs md:text-sm">Saldo Tabungan</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredTabunganData.map((student) => (
+                                                    <TableRow key={student.id}>
+                                                        <TableCell className="font-medium text-xs md:text-sm">{student.nis}</TableCell>
+                                                        <TableCell className="text-xs md:text-sm">{student.name}</TableCell>
+                                                        <TableCell className="text-xs md:text-sm">{student.halaqah}</TableCell>
+                                                        <TableCell className="text-right font-semibold text-xs md:text-sm">
+                                                            {formatRupiah(student.saldoTabungan)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {filteredTabunganData.length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8 text-sm">
+                                                            Tidak ada data santri.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Dynamic Category Views */}
+                        {dynamicCategories.map(category => {
+                            if (selectedCategory !== category.code) return null
+
+                            const categoryData = dynamicCategoryData.get(category.code) || []
+                            const filteredData = categoryData.filter(student => {
+                                const matchesHalaqah = selectedHalaqah === "all" || student.halaqahId === selectedHalaqah
+                                const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    student.nis.toLowerCase().includes(searchQuery.toLowerCase())
+                                return matchesHalaqah && matchesSearch
+                            })
+
+                            return (
+                                <Card key={category.code}>
+                                    <CardHeader>
+                                        <CardTitle className="text-base md:text-lg">Monitoring {category.name} - Tahun {selectedYear}</CardTitle>
+                                        <CardDescription>Status pembayaran {category.name} per bulan</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="overflow-x-auto -mx-4 md:mx-0">
+                                            <div className="inline-block min-w-full align-middle">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead className="sticky left-0 bg-background z-10 min-w-[150px] md:min-w-[200px] text-xs md:text-sm">Nama Santri</TableHead>
+                                                            <TableHead className="text-center min-w-[50px] md:min-w-[60px] text-xs md:text-sm">NIS</TableHead>
+                                                            {MONTHS.map((month, idx) => (
+                                                                <TableHead key={idx} className="text-center min-w-[40px] md:min-w-[60px] text-xs md:text-sm">
+                                                                    {month}
+                                                                </TableHead>
+                                                            ))}
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {filteredData.map((student) => (
+                                                            <TableRow key={student.id}>
+                                                                <TableCell className="sticky left-0 bg-background z-10 font-medium text-xs md:text-sm">
+                                                                    {student.name}
+                                                                </TableCell>
+                                                                <TableCell className="text-center text-xs md:text-sm text-muted-foreground">
+                                                                    {student.nis}
+                                                                </TableCell>
+                                                                {MONTH_INDICES.map((monthIdx, idx) => (
+                                                                    <TableCell key={idx}>
+                                                                        <PaymentIndicator isPaid={!!student.paymentsByMonth[monthIdx]} />
+                                                                    </TableCell>
+                                                                ))}
+                                                            </TableRow>
+                                                        ))}
+                                                        {filteredData.length === 0 && (
+                                                            <TableRow>
+                                                                <TableCell colSpan={14} className="text-center text-muted-foreground py-8 text-sm">
+                                                                    Tidak ada data santri.
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
+                    </>
+                </div>
             )}
         </div>
     )
 }
+

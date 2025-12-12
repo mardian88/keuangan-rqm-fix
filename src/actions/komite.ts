@@ -82,15 +82,19 @@ export async function getKomiteStats() {
     const savingsBalance = (savIncomeAdmin + savIncomeKomite) - savExpenseKomite
 
     // Operational Components (Exclude both Tabungan AND SPP)
-    // Only include: Uang Kas + Other Income that Komite actually manages
+    // Only count:
+    // 1. Admin transactions that have been handed over (COMPLETED)
+    // 2. Komite's own expenses
+    // Do NOT count komite's income transactions to avoid double counting with handover
     const opIncomeAdmin = adminTransactions?.filter(t => !isSavings(t.type) && !isSpp(t.type)).reduce((sum, t) => sum + t.amount, 0) || 0
-    const opIncomeKomite = komiteIncomeTransactions?.filter(t => !isSavings(t.type) && !isSpp(t.type)).reduce((sum, t) => sum + t.amount, 0) || 0
     const opExpenseKomite = komiteExpenseTransactions?.filter(t => !isSavings(t.type)).reduce((sum, t) => sum + t.amount, 0) || 0
 
-    const operationalBalance = (opIncomeAdmin + opIncomeKomite) - opExpenseKomite
+    // Operational balance = Income from admin handover - Komite expenses
+    const operationalBalance = opIncomeAdmin - opExpenseKomite
 
-    // Totals for display (Include all income types for total statistics)
-    const totalIncome = (opIncomeAdmin + savIncomeAdmin) + (opIncomeKomite + savIncomeKomite)
+    // Totals for display (Include savings for total statistics)
+    const savIncomeTotal = savIncomeAdmin + savIncomeKomite
+    const totalIncome = opIncomeAdmin + savIncomeTotal
     const totalExpense = opExpenseKomite + savExpenseKomite
 
     const pendingAtAdmin = pendingTransactions?.reduce((sum, t) => sum + t.amount, 0) || 0
@@ -177,12 +181,13 @@ export async function getKomiteMonthlyStats() {
         const savExpenseKomite = komiteExpenseTransactions?.filter(t => isSavings(t.type)).reduce((sum, t) => sum + t.amount, 0) || 0
         const savingsBalance = (savIncomeAdmin + savIncomeKomite) - savExpenseKomite
 
+        // Only count admin handover income, not komite's own income to avoid double counting
         const opIncomeAdmin = adminTransactions?.filter(t => !isSavings(t.type) && !isSpp(t.type)).reduce((sum, t) => sum + t.amount, 0) || 0
-        const opIncomeKomite = komiteIncomeTransactions?.filter(t => !isSavings(t.type) && !isSpp(t.type)).reduce((sum, t) => sum + t.amount, 0) || 0
         const opExpenseKomite = komiteExpenseTransactions?.filter(t => !isSavings(t.type)).reduce((sum, t) => sum + t.amount, 0) || 0
-        const operationalBalance = (opIncomeAdmin + opIncomeKomite) - opExpenseKomite
+        const operationalBalance = opIncomeAdmin - opExpenseKomite
 
-        const totalIncome = (opIncomeAdmin + savIncomeAdmin) + (opIncomeKomite + savIncomeKomite)
+        const savIncomeTotal = savIncomeAdmin + savIncomeKomite
+        const totalIncome = opIncomeAdmin + savIncomeTotal
         const totalExpense = opExpenseKomite + savExpenseKomite
 
         return { operationalBalance, savingsBalance, totalIncome, totalExpense }
