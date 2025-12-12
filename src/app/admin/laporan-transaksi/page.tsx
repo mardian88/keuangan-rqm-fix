@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Plus, Pencil, Trash2, Filter, X } from "lucide-react"
+import { Loader2, Plus, Pencil, Trash2, Filter, X, Trash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Table,
@@ -39,7 +39,8 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { getFilteredTransactions, updateTransaction, deleteTransaction } from "@/actions/reports"
+import { Checkbox } from "@/components/ui/checkbox"
+import { getFilteredTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions } from "@/actions/reports"
 import { getAllCategories } from "@/actions/categories"
 import { useToast } from "@/contexts/toast-context"
 import { format } from "date-fns"
@@ -61,6 +62,9 @@ export default function TransactionReportPage() {
     const [totalPages, setTotalPages] = useState(1)
     const [currentPage, setCurrentPage] = useState(1)
     const { showToast } = useToast()
+
+    // Selection states
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
     // Filter states
     const [showFilters, setShowFilters] = useState(false)
@@ -84,6 +88,8 @@ export default function TransactionReportPage() {
     useEffect(() => {
         loadCategories()
         loadTransactions()
+        // Clear selection when filters or page changes
+        setSelectedIds(new Set())
     }, [currentPage, startDate, endDate, categoryFilter, typeFilter, creatorRoleFilter, searchQuery])
 
     async function loadCategories() {
@@ -159,6 +165,42 @@ export default function TransactionReportPage() {
         }
     }
 
+    async function handleBulkDelete() {
+        const count = selectedIds.size
+        if (count === 0) return
+
+        if (!confirm(`Apakah Anda yakin ingin menghapus ${count} transaksi yang dipilih?`)) return
+
+        try {
+            await bulkDeleteTransactions(Array.from(selectedIds))
+            showToast(`${count} transaksi berhasil dihapus`, "success")
+            setSelectedIds(new Set())
+            loadTransactions()
+        } catch (error: any) {
+            showToast(error.message || "Gagal menghapus transaksi", "error")
+        }
+    }
+
+    function toggleSelectAll() {
+        if (selectedIds.size === transactions.length && transactions.length > 0) {
+            // Deselect all
+            setSelectedIds(new Set())
+        } else {
+            // Select all on current page
+            setSelectedIds(new Set(transactions.map(t => t.id)))
+        }
+    }
+
+    function toggleSelectTransaction(id: string) {
+        const newSelected = new Set(selectedIds)
+        if (newSelected.has(id)) {
+            newSelected.delete(id)
+        } else {
+            newSelected.add(id)
+        }
+        setSelectedIds(newSelected)
+    }
+
     function clearFilters() {
         setStartDate("")
         setEndDate("")
@@ -185,6 +227,15 @@ export default function TransactionReportPage() {
                     <p className="text-muted-foreground">Kelola dan lihat semua transaksi dengan filter lengkap</p>
                 </div>
                 <div className="flex gap-2">
+                    {selectedIds.size > 0 && (
+                        <Button
+                            variant="destructive"
+                            onClick={handleBulkDelete}
+                        >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Hapus {selectedIds.size} Terpilih
+                        </Button>
+                    )}
                     <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
                         <Filter className="mr-2 h-4 w-4" />
                         {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
@@ -276,6 +327,13 @@ export default function TransactionReportPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-12">
+                                <Checkbox
+                                    checked={transactions.length > 0 && selectedIds.size === transactions.length}
+                                    onCheckedChange={toggleSelectAll}
+                                    aria-label="Select all"
+                                />
+                            </TableHead>
                             <TableHead>Tanggal</TableHead>
                             <TableHead>Kategori</TableHead>
                             <TableHead>Tipe</TableHead>
@@ -289,19 +347,26 @@ export default function TransactionReportPage() {
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8">
+                                <TableCell colSpan={9} className="text-center py-8">
                                     <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                                 </TableCell>
                             </TableRow>
                         ) : transactions.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                                     Tidak ada transaksi.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             transactions.map((txn) => (
                                 <TableRow key={txn.id}>
+                                    <TableCell>
+                                        <Checkbox
+                                            checked={selectedIds.has(txn.id)}
+                                            onCheckedChange={() => toggleSelectTransaction(txn.id)}
+                                            aria-label={`Select transaction ${txn.id}`}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         {format(new Date(txn.date), "dd MMM yyyy", { locale: localeId })}
                                     </TableCell>

@@ -173,3 +173,29 @@ export async function deleteTransaction(id: string) {
     revalidatePath("/admin/laporan-transaksi")
     revalidatePath("/admin")
 }
+
+export async function bulkDeleteTransactions(ids: string[]) {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== "ADMIN") {
+        throw new Error("Unauthorized")
+    }
+
+    if (!ids || ids.length === 0) {
+        throw new Error("No transaction IDs provided")
+    }
+
+    const { error } = await supabaseAdmin
+        .from('Transaction')
+        .delete()
+        .in('id', ids)
+
+    if (error) {
+        console.error('Error deleting transactions:', error)
+        throw new Error('Failed to delete transactions')
+    }
+
+    revalidatePath("/admin/laporan-transaksi")
+    revalidatePath("/admin")
+
+    return { success: true, deletedCount: ids.length }
+}
