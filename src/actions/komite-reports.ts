@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { startOfDay, endOfDay } from "date-fns"
+import { toLocalISOString } from "@/lib/date-utils"
 
 export type ReportCategory = "PEMASUKAN_LAIN" | "PENGELUARAN_KOMITE" | "KAS_SANTRI" | "TABUNGAN_SANTRI"
 
@@ -245,7 +246,7 @@ export async function updateTransactionKomite(id: string, data: {
     if (data.type) updateData.type = data.type
     if (data.amount !== undefined) updateData.amount = data.amount
     if (data.description !== undefined) updateData.description = data.description
-    if (data.date) updateData.date = data.date.toISOString()
+    if (data.date) updateData.date = toLocalISOString(data.date)
 
     const { error } = await supabaseAdmin
         .from('Transaction')

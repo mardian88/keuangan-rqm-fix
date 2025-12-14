@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { revalidatePath } from "next/cache"
+import { toLocalISOString } from "@/lib/date-utils"
 
 // Helper function to check for existing monthly transaction (SPP or KAS)
 async function checkExistingMonthlyTransaction(
@@ -245,7 +246,7 @@ export async function createTransaction(data: {
             type: data.type,
             amount: data.amount,
             description: data.description,
-            date: data.date.toISOString(),
+            date: toLocalISOString(data.date),
             studentId: data.studentId,
             teacherId: data.teacherId,
             creatorId: session.user.id,

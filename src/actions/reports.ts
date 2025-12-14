@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { revalidatePath } from "next/cache"
+import { toLocalISOString } from "@/lib/date-utils"
 
 interface TransactionFilters {
     startDate?: string
@@ -138,7 +139,7 @@ export async function updateTransaction(id: string, data: {
     if (data.type) updateData.type = data.type
     if (data.amount !== undefined) updateData.amount = data.amount
     if (data.description !== undefined) updateData.description = data.description
-    if (data.date) updateData.date = data.date.toISOString()
+    if (data.date) updateData.date = toLocalISOString(data.date)
 
     const { error } = await supabaseAdmin
         .from('Transaction')

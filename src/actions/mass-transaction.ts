@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { revalidatePath } from "next/cache"
+import { toLocalISOString } from "@/lib/date-utils"
 
 // Helper function to check if student can pay SPP (not duplicate in current month)
 // Returns true if SAFE to pay, false if duplicate exists and no installment plan
@@ -91,7 +92,7 @@ export async function createMassTransaction(data: {
         type: data.type,
         amount: data.amount,
         description: data.description,
-        date: data.date.toISOString(),
+        date: toLocalISOString(data.date),
         studentId: studentId,
         creatorId: session.user.id,
         isHandover: isHandover,
