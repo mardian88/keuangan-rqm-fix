@@ -16,9 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Keuangan RQM",
   description: "Sistem Manajemen Keuangan Rumah Qur'an Al-Muharrik",
-  icons: {
-    icon: '/favicon.png',
-  },
 };
 
 export default function RootLayout({
