@@ -307,12 +307,17 @@ export default function TransactionReportPage() {
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <Input
-                            placeholder="Cari keterangan transaksi..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="flex-1"
-                        />
+                        <div className="flex-1">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Cari nama santri..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9"
+                                />
+                            </div>
+                        </div>
                         <Button variant="outline" onClick={clearFilters}>
                             <X className="mr-2 h-4 w-4" />
                             Reset Filter

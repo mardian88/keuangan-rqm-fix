@@ -93,14 +93,8 @@ export async function getFilteredTransactions(filters: TransactionFilters = {}) 
         }
     }
 
-    if (searchQuery) {
-        query = query.ilike('description', `%${searchQuery}%`)
-    }
-
-    // Pagination
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-    query = query.range(from, to)
+    // Note: Search by student name will be done client-side after fetching
+    // because Supabase doesn't support filtering on joined table fields directly
 
     const { data, error, count } = await query
 
@@ -109,18 +103,37 @@ export async function getFilteredTransactions(filters: TransactionFilters = {}) 
         throw new Error('Failed to fetch transactions')
     }
 
+    // Apply search filter by student/teacher name (client-side)
+    let filteredData = data || []
+    if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase()
+        filteredData = filteredData.filter(t => {
+            const studentName = Array.isArray(t.User) ? t.User[0]?.name : t.User?.name
+            const teacherName = Array.isArray(t.Teacher) ? t.Teacher[0]?.name : t.Teacher?.name
+            return (
+                studentName?.toLowerCase().includes(searchLower) ||
+                teacherName?.toLowerCase().includes(searchLower)
+            )
+        })
+    }
+
     // Enrich data with category details
-    const enrichedData = data?.map(t => ({
+    const enrichedData = filteredData.map(t => ({
         ...t,
         TransactionCategory: categoryMap.get(t.type) || { name: t.type, type: 'UNKNOWN' }
-    })) || []
+    }))
+
+    // Pagination (client-side after filtering)
+    const from = (page - 1) * pageSize
+    const to = from + pageSize
+    const paginatedData = enrichedData.slice(from, to)
 
     return {
-        transactions: enrichedData,
-        totalCount: count || 0,
+        transactions: paginatedData,
+        totalCount: enrichedData.length,
         page,
         pageSize,
-        totalPages: Math.ceil((count || 0) / pageSize)
+        totalPages: Math.ceil(enrichedData.length / pageSize)
     }
 }
 

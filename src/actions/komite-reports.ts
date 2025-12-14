@@ -182,14 +182,8 @@ export async function getFilteredTransactionsKomite(filters: TransactionFiltersK
         }
     }
 
-    if (searchQuery) {
-        query = query.ilike('description', `%${searchQuery}%`)
-    }
-
-    // Pagination
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-    query = query.range(from, to)
+    // Note: Search by student name will be done client-side after fetching
+    // because Supabase doesn't support filtering on joined table fields directly
 
     const { data, error, count } = await query
 
@@ -199,10 +193,23 @@ export async function getFilteredTransactionsKomite(filters: TransactionFiltersK
     }
 
     // Filter for transactions visible to Komite
-    const visibleTransactions = data?.filter(t =>
+    let visibleTransactions = data?.filter(t =>
         t.Creator?.role === "KOMITE" ||
         (t.Creator?.role === "ADMIN" && t.handoverStatus === "COMPLETED")
     ) || []
+
+    // Apply search filter by student name (client-side)
+    if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase()
+        visibleTransactions = visibleTransactions.filter(t => {
+            const studentName = Array.isArray(t.User) ? t.User[0]?.name : t.User?.name
+            const teacherName = Array.isArray(t.Teacher) ? t.Teacher[0]?.name : t.Teacher?.name
+            return (
+                studentName?.toLowerCase().includes(searchLower) ||
+                teacherName?.toLowerCase().includes(searchLower)
+            )
+        })
+    }
 
     // Enrich data with category details
     const enrichedData = visibleTransactions.map(t => ({
@@ -210,12 +217,17 @@ export async function getFilteredTransactionsKomite(filters: TransactionFiltersK
         TransactionCategory: categoryMap.get(t.type) || { name: t.type, type: 'UNKNOWN' }
     }))
 
+    // Pagination (client-side after filtering)
+    const from = (page - 1) * pageSize
+    const to = from + pageSize
+    const paginatedData = enrichedData.slice(from, to)
+
     return {
-        transactions: enrichedData,
-        totalCount: visibleTransactions.length,
+        transactions: paginatedData,
+        totalCount: enrichedData.length,
         page,
         pageSize,
-        totalPages: Math.ceil(visibleTransactions.length / pageSize)
+        totalPages: Math.ceil(enrichedData.length / pageSize)
     }
 }
 
