@@ -342,8 +342,21 @@ export default function KomiteReportsPage() {
                             </TableRow>
                         ) : (
                             transactions.map((txn) => (
-                                <TableRow key={txn.id}>
-                                    <TableCell>
+                                <TableRow
+                                    key={txn.id}
+                                    className="md:cursor-default cursor-pointer"
+                                    onClick={(e) => {
+                                        // Only trigger on mobile (screen width < 768px)
+                                        // Don't trigger if clicking checkbox or action buttons
+                                        const target = e.target as HTMLElement
+                                        if (window.innerWidth < 768 &&
+                                            !target.closest('input[type="checkbox"]') &&
+                                            !target.closest('button')) {
+                                            openEditDialog(txn)
+                                        }
+                                    }}
+                                >
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
                                         <Checkbox
                                             checked={selectedIds.has(txn.id)}
                                             onCheckedChange={() => toggleSelectTransaction(txn.id)}
@@ -368,15 +381,15 @@ export default function KomiteReportsPage() {
                                     <TableCell>
                                         {txn.User?.name || txn.Teacher?.name || "-"}
                                     </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(txn)}>
+                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(txn)} className="hidden md:inline-flex">
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                className="text-red-500 hover:text-red-600 hover:bg-red-50 hidden md:inline-flex"
                                                 onClick={() => handleDelete(txn.id)}
                                             >
                                                 <Trash2 className="h-4 w-4" />
@@ -414,6 +427,21 @@ export default function KomiteReportsPage() {
                     </div>
                 )
             }
+
+            {/* Floating Delete Button for Mobile */}
+            {selectedIds.size > 0 && (
+                <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                    <Button
+                        variant="destructive"
+                        size="lg"
+                        onClick={handleBulkDelete}
+                        className="shadow-lg"
+                    >
+                        <Trash className="mr-2 h-5 w-5" />
+                        Hapus {selectedIds.size} Terpilih
+                    </Button>
+                </div>
+            )}
 
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
