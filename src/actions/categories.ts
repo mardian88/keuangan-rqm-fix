@@ -36,7 +36,9 @@ export async function getTransactionCategories(role: "ADMIN" | "KOMITE", type?: 
 
 export async function getAllCategories() {
     const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== "ADMIN") throw new Error("Unauthorized")
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "KOMITE")) {
+        throw new Error("Unauthorized")
+    }
 
     const { data, error } = await supabaseAdmin
         .from('TransactionCategory')
